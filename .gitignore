@@ -1,0 +1,37 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env
+# Compiled classes
+*.class
+
+# Build directories
+target/
+build/
+# VSCode
+.vscode/
+
+# JetBrains IDEs (IntelliJ, PyCharm)
+.idea/
