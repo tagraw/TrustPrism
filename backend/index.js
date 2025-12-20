@@ -1,6 +1,9 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
+import authRoutes from "./routes/auth.js";
+import groupRoutes from "./routes/groups.js";
+import { pool } from "./db.js";
+import cors from 'cors';
 
 dotenv.config();
 
@@ -12,7 +15,15 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+
+// Auth routes
+app.use("/auth", authRoutes);
+
+// Group routes (protected with JWT + role middleware)
+app.use("/groups", groupRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
+
