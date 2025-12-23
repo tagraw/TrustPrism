@@ -65,17 +65,17 @@ router.post("/login", async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
-    // Optional: prevent unverified researchers from logging in
-    if (user.role === "researcher") {
-      const resCheck = await pool.query(
-        "SELECT verified FROM researchers WHERE user_id = $1",
-        [user.id]
-      );
+    // // Optional: prevent unverified researchers from logging in
+    // if (user.role === "researcher") {
+    //   const resCheck = await pool.query(
+    //     "SELECT verified FROM researchers WHERE user_id = $1",
+    //     [user.id]
+    //   );
 
-      if (!resCheck.rows[0].verified) {
-        return res.status(403).json({ error: "Researcher not verified yet" });
-      }
-    }
+    //   if (!resCheck.rows[0].verified) {
+    //     return res.status(403).json({ error: "Researcher not verified yet" });
+    //   }
+    // }
 
     const token = jwt.sign(
       { id: user.id, role: user.role },

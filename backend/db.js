@@ -1,10 +1,27 @@
-import pkg from "pg";
-const { Pool } = pkg;
+// db.js
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, ".env") });
+
+import pg from "pg";
+const { Pool } = pg;
 
 export const pool = new Pool({
-  host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
   database: process.env.DB_NAME,
-  port: 5432,
+  password: process.env.DB_PASS,
+  port: Number(process.env.DB_PORT),
 });
+
+pool.connect()
+  .then(() => console.log("✅ PostgreSQL connected"))
+  .catch(err => {
+    console.error("🔥 Failed to connect to PostgreSQL:", err);
+    process.exit(1);
+  });
