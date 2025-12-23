@@ -15,7 +15,10 @@ export default function Login() {
     setError("");
 
     try {
-      const { token, role } = await login({email, password});
+      const { token, role } = await login({
+        email: email.trim(),
+        password: password.trim(),
+      });
       
 
 
