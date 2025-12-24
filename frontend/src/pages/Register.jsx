@@ -7,8 +7,8 @@ export default function Register() {
   const [role, setRole] = useState("user");
 
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     email: "",
     dob: "",
     password: "",
@@ -64,8 +64,8 @@ export default function Register() {
         <option value="researcher">Researcher</option>
       </select>
 
-      <input name="firstName" placeholder="First name" onChange={update} required/>
-      <input name="lastName" placeholder="Last name" onChange={update} required/>
+      <input name="first_name" placeholder="First name" onChange={update} required/>
+      <input name="last_name" placeholder="Last name" onChange={update} required/>
       <input name="email" placeholder="Email" onChange={update} required/>
       <input type="password" name="password" placeholder="Password" onChange={update} required/>
 

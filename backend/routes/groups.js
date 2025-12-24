@@ -57,14 +57,14 @@ router.post("/:groupId/join", requireAuth, requireRole("researcher"), async (req
 
   try {
     // Check verified
-    const { rows } = await pool.query(
-      "SELECT verified FROM researchers WHERE user_id = $1",
-      [researcherId]
-    );
+        // const { rows } = await pool.query(
+        //   "SELECT verified FROM researchers WHERE user_id = $1",
+        //   [researcherId]
+        // );
 
-    if (!rows[0] || !rows[0].verified) {
-      return res.status(403).json({ error: "Researcher not verified" });
-    }
+    // if (!rows[0] || !rows[0].verified) {
+    //   return res.status(403).json({ error: "Researcher not verified" });
+    // }
 
     // Add to group members
     await pool.query(
@@ -102,5 +102,31 @@ router.get("/", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch groups" });
   }
 });
+
+/**
+ * GET researcher groups that the logged-in researcher belongs to
+ */
+router.get("/my-groups", requireAuth, requireRole("researcher"), async (req, res) => {
+  const researcherId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT rg.id, rg.name, rg.description
+      FROM researcher_groups rg
+      JOIN researcher_group_members rgm
+        ON rg.id = rgm.group_id
+      WHERE rgm.researcher_id = $1
+      `,
+      [researcherId]
+    );
+
+    res.json(result.rows); // returns array of groups
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch your groups" });
+  }
+});
+
 
 export default router;

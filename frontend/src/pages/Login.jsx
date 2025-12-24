@@ -28,7 +28,7 @@ export default function Login() {
       // Role-based redirect
       if (role === "admin") navigate("/admin");
       if (role === "researcher") navigate("/researcher");
-      if (role === "user") navigate("/game");
+      if (role === "user") navigate("/user");
     } catch (err) {
       setError(err.message);
     }
