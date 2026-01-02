@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import {loginLimiter, signupLimiter} from "../middleware/rateLimit.js";
+import {loginValidation, signupValidation} from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -10,7 +12,7 @@ const router = express.Router();
  * REGISTER
  * Only "user" and "researcher"
  */
-router.post("/register", async (req, res) => {
+router.post("/register", signupLimiter, signupValidation, async (req, res) => {
   const {
     email,
     password,
@@ -122,7 +124,7 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
@@ -146,7 +148,7 @@ router.post("/register", async (req, res) => {
  * All roles (including admin)
  * Optional: check verified for researchers
  */
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, loginValidation, async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -176,7 +178,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
     res.json({ token, role: user.role });

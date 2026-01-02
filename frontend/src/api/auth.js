@@ -31,7 +31,7 @@ export async function register(data) {
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || "Failed to register");
+      throw new Error(err.error || err.message || "Failed to register");
     }
 
     return res.json(); // expected: { token, role, user, createdGroup? }
@@ -40,3 +40,5 @@ export async function register(data) {
     throw err;
   }
 }
+
+
