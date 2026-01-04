@@ -5,6 +5,8 @@ import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import {loginLimiter, signupLimiter} from "../middleware/rateLimit.js";
 import {loginValidation, signupValidation} from "../middleware/validation.js";
+import crypto from "crypto";
+import { sendVerificationEmail } from "../util/email.js";
 
 const router = express.Router();
 
@@ -59,26 +61,40 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
     // Hash password
     const hash = await bcrypt.hash(password, 12);
 
-    // Insert user
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // 3. Prepare Query
     const query = `
       INSERT INTO users (
         email,
         password_hash,
         role,
         first_name,
-        last_name
+        last_name,
+        verification_token
         ${role === "user" ? ", dob" : ""}
       )
-      VALUES ($1, $2, $3, $4, $5${role === "user" ? ", $6" : ""})
+      VALUES ($1, $2, $3, $4, $5, $6${role === "user" ? ", $7" : ""})
       RETURNING id, email, role
     `;
 
-    const params = [email, hash, role, first_name, last_name];
+    // 4. FIX: Include verificationToken in the params array
+    const params = [email, hash, role, first_name, last_name, verificationToken];
+    
+    // If it's a user, dob becomes the 7th parameter ($7)
     if (role === "user") params.push(dob);
 
     const result = await pool.query(query, params);
-
     const user = result.rows[0];
+
+    // 5. Send Email (ensure variable name matches: verificationToken)
+    try {
+        await sendVerificationEmail(email, verificationToken);
+    } catch (emailErr) {
+        console.error("Email failed to send:", emailErr);
+    }
+
+    
 
     // If researcher, create profile
     if (role === "researcher") {
@@ -127,11 +143,14 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
+      message: "Registration successful! Please check your email to verify your account.",
       token,
       role: user.role,
       createdGroup: user.createdGroup ?? null
     });
+  
+
   } catch (err) {
     console.error(err);
 
@@ -160,20 +179,12 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     const user = result.rows[0];
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
+    if (!user.is_verified) {
+      return res.status(403).json({ error: "Please verify your email before logging in." });
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: "Invalid credentials" });
-
-    // // Optional: prevent unverified researchers from logging in
-    // if (user.role === "researcher") {
-    //   const resCheck = await pool.query(
-    //     "SELECT verified FROM researchers WHERE user_id = $1",
-    //     [user.id]
-    //   );
-
-    //   if (!resCheck.rows[0].verified) {
-    //     return res.status(403).json({ error: "Researcher not verified yet" });
-    //   }
-    // }
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
@@ -188,5 +199,24 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
   }
 });
 
+
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    const result = await pool.query(
+      "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1 RETURNING id",
+      [token]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
+
+    res.json({ message: "Email verified successfully! You can now log in." });
+  } catch (err) {
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
 
 export default router;

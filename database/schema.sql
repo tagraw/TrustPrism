@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('user', 'researcher', 'admin')),
+  first_name TEXT NOT NULL,         -- Added
+  last_name TEXT NOT NULL,          -- Added
+  dob DATE,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
