@@ -6,6 +6,7 @@ import Researcher from "./pages/Researcher";
 import User from "./pages/User";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/protectedRoute";
+import VerifyEmail from "./pages/VerifyEmail";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         <Route
           path="/admin"

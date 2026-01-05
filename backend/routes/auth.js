@@ -180,7 +180,9 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     if (!user.is_verified) {
-      return res.status(403).json({ error: "Please verify your email before logging in." });
+      return res.status(403).json({ 
+        error: "Your email is not verified. Please check your inbox for the verification link." 
+      });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
@@ -200,22 +202,32 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
 });
 
 
+// GET /auth/verify-email?token=...
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
 
   try {
-    const result = await pool.query(
-      "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1 RETURNING id",
+    // Check if the user is already verified with this token
+    const userResult = await pool.query(
+      "SELECT is_verified FROM users WHERE verification_token = $1",
       [token]
     );
 
-    if (result.rowCount === 0) {
-      return res.status(400).json({ error: "Invalid or expired token" });
+    if (userResult.rowCount === 0) {
+      // If the token isn't in verification_token, check if a user with that email is already verified
+      // Or simply allow the error if the token is completely unknown.
+      return res.status(400).json({ error: "Token invalid or already used." });
     }
 
-    res.json({ message: "Email verified successfully! You can now log in." });
+    // Update the user
+    await pool.query(
+      "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1",
+      [token]
+    );
+
+    return res.json({ message: "Email verified successfully!" });
   } catch (err) {
-    res.status(500).json({ error: "Verification failed" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
