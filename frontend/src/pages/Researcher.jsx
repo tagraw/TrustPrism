@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMyGroups } from "../api/groups";
-
+import LogoutButton from "../components/LogoutButton";
 export default function Researcher() {
   const [groups, setGroups] = useState([]);
 
@@ -19,7 +19,7 @@ export default function Researcher() {
   return (
     <div>
       <h1>Researcher Dashboard</h1>
-
+      <LogoutButton />
       {groups.length > 0 ? (
         <div>
           <h2>Your Groups</h2>

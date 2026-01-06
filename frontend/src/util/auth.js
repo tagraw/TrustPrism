@@ -1,4 +1,17 @@
 import jwtDecode from "jwt-decode";
+export const getAuthToken = () => {
+  return localStorage.getItem("token");
+};
+
+export const getAuthRole = () => {
+  return localStorage.getItem("role");
+};
+
+export const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  window.location.href = "/login";
+};
 
 export function getStoredUser() {
   const token = localStorage.getItem("token");

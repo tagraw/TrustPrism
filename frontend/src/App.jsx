@@ -7,8 +7,19 @@ import User from "./pages/User";
 import Home from "./pages/Home";
 import ProtectedRoute from "./components/protectedRoute";
 import VerifyEmail from "./pages/VerifyEmail";
-
+import AuthContext from "./context/AuthContext";
+import { useContext, useEffect } from "react";
 export default function App() {
+    const { setAuth } = useContext(AuthContext);
+    useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (token && role) {
+      // Optionally: Verify token validity with a 'me' or 'validate' endpoint here
+      setAuth({ token, role });
+    }
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

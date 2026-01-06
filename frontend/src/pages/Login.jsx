@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { login } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { validateLogin } from "../util/validators";
+import AuthContext from "../context/AuthContext";
 
 export default function Login() {
+  const { setAuth } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
@@ -32,7 +34,7 @@ export default function Login() {
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
-
+      setAuth({ token, role });
       // Role-based redirect
       if (role === "admin") navigate("/admin");
       else if (role === "researcher") navigate("/researcher");
