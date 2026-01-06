@@ -12,7 +12,7 @@ export const loginLimiter = rateLimit({
 
 export const signupLimiter = rateLimit({
   windowMs: 1440 * 60 * 1000, // 24 hour
-  max: 15,
+  max: 7,
   message: {
     error: "Too many signup attempts. Try again later."
   }

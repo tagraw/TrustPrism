@@ -1,16 +1,16 @@
 import { createContext, useState, useEffect } from "react";
 
+// 1. Create and export the context itself (for useContext)
 const AuthContext = createContext({});
 
+// 2. Export the provider (for main.jsx)
 export const AuthProvider = ({ children }) => {
-    // Initialize state from localStorage to persist after tab close
     const [auth, setAuth] = useState(() => {
         const token = localStorage.getItem("token");
         const role = localStorage.getItem("role");
         return token ? { token, role } : {};
     });
 
-    // Update localStorage whenever auth state changes
     useEffect(() => {
         if (auth?.token) {
             localStorage.setItem("token", auth.token);
@@ -21,9 +21,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, [auth]);
 
-    const logout = () => {
-        setAuth({}); // Clearing state triggers the useEffect to clear localStorage
-    };
+    const logout = () => setAuth({});
 
     return (
         <AuthContext.Provider value={{ auth, setAuth, logout }}>
@@ -32,4 +30,5 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
+// Default export the context
 export default AuthContext;

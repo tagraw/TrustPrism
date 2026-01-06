@@ -2,7 +2,7 @@ import { useState, useContext } from "react";
 import { login } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { validateLogin } from "../util/validators";
-import AuthContext from "../context/AuthContext";
+import AuthContext from "../context/AuthContext.jsx";
 
 export default function Login() {
   const { setAuth } = useContext(AuthContext);
