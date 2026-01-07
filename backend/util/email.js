@@ -41,3 +41,22 @@ export const sendVerificationEmail = async (email, token) => {
 
   return transporter.sendMail(mailOptions);
 };
+
+export const sendPasswordResetEmail = async (email, token) => {
+    // Construct the URL exactly once here
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    const mailOptions = {
+        from: `"TrustPrism" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Password Reset Request",
+        html: `
+        <h1>Password Reset</h1>
+        <p>You requested a password reset. Please click the link below to set a new password:</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+        <p>This link will expire in 1 hour.</p>
+        `,
+    };
+
+    return transporter.sendMail(mailOptions);
+};

@@ -8,6 +8,8 @@ import Home from "./pages/Home";
 import ProtectedRoute from "./components/protectedRoute";
 import VerifyEmail from "./pages/VerifyEmail";
 import AuthContext from "./context/AuthContext";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import { useContext, useEffect } from "react";
 export default function App() {
     const { setAuth } = useContext(AuthContext);
@@ -19,7 +21,7 @@ export default function App() {
       // Optionally: Verify token validity with a 'me' or 'validate' endpoint here
       setAuth({ token, role });
     }
-  }, []);
+  }, [setAuth]);
   return (
     <BrowserRouter>
       <Routes>
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/admin"

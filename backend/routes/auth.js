@@ -7,6 +7,7 @@ import {loginLimiter, signupLimiter} from "../middleware/rateLimit.js";
 import {loginValidation, signupValidation} from "../middleware/validation.js";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../util/email.js";
+import { sendPasswordResetEmail } from "../util/email.js";
 
 const router = express.Router();
 
@@ -228,6 +229,59 @@ router.get("/verify-email", async (req, res) => {
     return res.json({ message: "Email verified successfully!" });
   } catch (err) {
     return res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const result = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1 hour
+
+    await pool.query(
+      "UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3",
+      [token, expires, email]
+    );
+
+    // FIX: Pass ONLY the raw token to the email utility
+    await sendPasswordResetEmail(email, token); 
+
+    res.json({ message: "Reset email sent successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+  console.log(token);
+  try {
+    // SECURITY: Pass the current JS date ($2) instead of using SQL NOW()
+    const result = await pool.query(
+      "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > $2",
+      [token, new Date()] 
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      "UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2",
+      [hash, result.rows[0].id]
+    );
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
