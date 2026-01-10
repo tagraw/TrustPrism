@@ -13,6 +13,7 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 import authRoutes from "./routes/auth.js";
 import groupRoutes from "./routes/groups.js";
+import sessionRoutes from "./routes/sessions.js";
 console.log("✅ .env loaded:", {
   DB_HOST: process.env.DB_HOST,
   DB_NAME: process.env.DB_NAME,
@@ -38,6 +39,7 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 // Routes
 app.use("/auth", authRoutes);
 app.use("/groups", groupRoutes);
+app.use("/sessions", sessionRoutes);
 
 // Catch-all unmatched route
 app.use((req, res) => {

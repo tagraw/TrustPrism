@@ -48,3 +48,21 @@ ADD COLUMN is_verified BOOLEAN DEFAULT FALSE,
 ADD COLUMN verification_token TEXT,
 ADD COLUMN reset_token TEXT,
 ADD COLUMN reset_token_expires TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  experiment_type TEXT NOT NULL,
+  started_at TIMESTAMP DEFAULT NOW(),
+  ended_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_interactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  prompt TEXT NOT NULL,
+  ai_response TEXT,
+  hint_level INT,
+  confidence_score FLOAT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
