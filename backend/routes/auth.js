@@ -8,6 +8,7 @@ import {loginValidation, signupValidation} from "../middleware/validation.js";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../util/email.js";
 import { sendPasswordResetEmail } from "../util/email.js";
+import { body, validationResult } from "express-validator";
 
 const router = express.Router();
 
@@ -146,7 +147,6 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
     return res.status(201).json({
       message: "Registration successful! Please check your email to verify your account.",
-      token,
       role: user.role,
       createdGroup: user.createdGroup ?? null
     });
@@ -226,6 +226,13 @@ router.get("/verify-email", async (req, res) => {
       [token]
     );
 
+    if (user.role === 'researcher') {
+      await pool.query(
+        "UPDATE researchers SET verified = TRUE WHERE user_id = $1",
+        [user.id]
+      );
+    }
+
     return res.json({ message: "Email verified successfully!" });
   } catch (err) {
     return res.status(500).json({ error: "Server error" });
@@ -233,29 +240,38 @@ router.get("/verify-email", async (req, res) => {
 });
 
 // POST /auth/forgot-password
-router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  try {
-    const result = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-    if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
+router.post("/forgot-password", 
+  body("email").isEmail().normalizeEmail(), // This handles the dots/casing automatically
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 3600000); // 1 hour
+    const { email } = req.body; // This will now be the normalized email
+    console.log("Searching for normalized email:", email);
+    try {
+      const result = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+      if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
 
-    await pool.query(
-      "UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3",
-      [token, expires, email]
-    );
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 3600000); // 1 hour
 
-    // FIX: Pass ONLY the raw token to the email utility
-    await sendPasswordResetEmail(email, token); 
+      await pool.query(
+        "UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE email = $3",
+        [token, expires, email]
+      );
 
-    res.json({ message: "Reset email sent successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+      // FIX: Pass ONLY the raw token to the email utility
+      await sendPasswordResetEmail(email, token); 
+
+      res.json({ message: "Reset email sent successfully" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
 
 // POST /auth/reset-password
 router.post("/reset-password", async (req, res) => {

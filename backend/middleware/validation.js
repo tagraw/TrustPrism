@@ -30,7 +30,7 @@ export const signupValidation = [
 ];
 
 export const loginValidation = [
-  body("email").isEmail(),
+  body("email").isEmail().normalizeEmail(),
   body("password").notEmpty(),
 
   (req, res, next) => {

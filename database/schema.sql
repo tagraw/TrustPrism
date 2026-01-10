@@ -42,3 +42,9 @@ CREATE TABLE IF NOT EXISTS admins (
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   super_admin BOOLEAN DEFAULT FALSE
 );
+
+ALTER TABLE users 
+ADD COLUMN is_verified BOOLEAN DEFAULT FALSE,
+ADD COLUMN verification_token TEXT,
+ADD COLUMN reset_token TEXT,
+ADD COLUMN reset_token_expires TIMESTAMP;
