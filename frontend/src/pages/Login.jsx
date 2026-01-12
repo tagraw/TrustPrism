@@ -3,6 +3,7 @@ import { login } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { validateLogin } from "../util/validators";
 import AuthContext from "../context/AuthContext.jsx";
+import "./Login.css"
 
 export default function Login() {
   const { setAuth } = useContext(AuthContext);

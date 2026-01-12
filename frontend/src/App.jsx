@@ -23,6 +23,9 @@ export default function App() {
     }
   }, [setAuth]);
   return (
+    
+    
+    
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />

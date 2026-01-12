@@ -1,0 +1,292 @@
+.home-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  overflow: hidden;
+  background-color: #fff; /* Deep dark blue-black background */
+}
+.fade-in-wrapper {
+  animation: pageFadeIn 0.9s ease-out forwards;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header wrapper */
+.site-header {
+  width: 100%;
+}
+
+/* Inner container */
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Brand (logo + text) */
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #020617;
+}
+/* Background glow effect from the design */
+.bg-glow {
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-header, .hero-section, .home-footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* Badge styling */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  color: #0ea5e9;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+.home-logo {
+  display: block;          /* make it a block element */
+  margin: 0 auto 1rem;
+  height: 180px;
+  filter: drop-shadow(0 0 20px rgba(14, 165, 233, 0.3));
+}
+
+.hero-main-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 3rem; 
+  font-weight: 1000;          /* Increased from 800 to 900 for maximum boldness */
+  line-height: 1;         /* Reduced line-height to tighten the gap between lines */
+  margin-bottom: .9rem;    /*Reduced from 1.5rem to 0.5rem to bring subtext closer */
+  letter-spacing: -0.05em;  /* Tighter letter spacing for a more aggressive look */
+  color: #0f172a;
+  text-align: center;
+}
+
+/* Updated Subtext Styling */
+.hero-subtext {
+  font-size: 1.25rem;
+  color: #94a3b8;
+  max-width: 650px;
+  margin: 0 auto 1.5rem;      /* Keeps bottom spacing but ensures no extra top margin */
+  line-height: 1.6;
+  text-align: center;
+}
+/* Buttons container */
+.cta-group {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Shared button base */
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  font-size: 1rem;          /* 16px – clean & readable */
+  line-height: 1;           /* fixes vertical alignment */
+  font-weight: 600;
+  letter-spacing: 0.01em;
+
+  padding: 0.9rem 2.25rem;
+  min-height: 48px;         /* consistent button height */
+
+  border-radius: 10px;
+  cursor: pointer;
+
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+/* Primary button */
+.btn-primary {
+  background-color: #14b8a6;
+  color: #020617;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
+}
+
+/* Secondary button */
+.btn-secondary {
+  background-color: #ffffff;
+  color: #020617;
+  border: 2px solid #FEA53F;
+}
+
+.btn-secondary:hover {
+  background-color: #FEA53F;
+}
+
+.home-footer {
+  margin-top: 5rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* Helper for Material Icons if you use them */
+.material-icons {
+  font-size: 18px;
+}
+/* --- Logo Spin Animation --- */
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.home-logo-spin {
+  animation: logo-spin infinite 20s linear; /* Matches your App.css logic */
+}
+
+//* The main container for the heading */
+.hero-main-title {
+  font-family: "Plus Jakarta Sans", sans-serif; /* Matches font-display */
+  font-size: 3rem; /* text-5xl equivalent */
+  font-weight: 800; /* font-extrabold */
+  margin-bottom: 1.5rem; /* mb-6 */
+  letter-spacing: -0.025em; /* tracking-tight */
+  line-height: 1.2;
+  color: #0f172a; /* text-slate-900 */
+  text-align: center;
+}
+
+/* Responsive font size for larger screens (md:text-7xl) */
+@media (min-width: 768px) {
+  .hero-main-title {
+    font-size: 4.5rem;
+  }
+}
+
+/* Dark mode override for the main text */
+@media (prefers-color-scheme: dark) {
+  .hero-main-title {
+    color: #0f172a;
+  }
+}
+
+/* The gradient effect on the word "TrustPrism" */
+.gradient-text {
+  display: inline-block;
+  background: linear-gradient(to right, #0ea5e9, #14b8a6); /* from-sky-500 to-teal-500 */
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent; /* Makes the background gradient show through the text */
+}
+
+/* --- Features Grid Section --- */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4rem;
+  margin-top: 4rem;
+ 
+  animation-delay: 0.8s;
+}
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: default;
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  margin-bottom: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.feature-item:hover .feature-icon {
+  transform: scale(1.1);
+}
+
+.icon-sky {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+}
+
+.icon-teal {
+  background: rgba(45, 212, 191, 0.1);
+  color: #2dd4bf;
+}
+
+.feature-title {
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.feature-description {
+  font-size: 0.75rem;
+  color: #64748b;
+  max-width: 160px;
+  line-height: 1.4;
+}
+
+/* Mobile responsive adjustment */
+@media (max-width: 640px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
