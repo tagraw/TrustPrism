@@ -1,0 +1,119 @@
+/* Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.fade-in-wrapper {
+  animation: pageFadeIn 0.9s ease-out forwards;
+}
+
+/* Background Glow (reuse from login) */
+.glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.6;
+  z-index: 0;
+}
+
+.glow.blue { background: #3ba7ff; top: -120px; left: -120px; }
+.glow.teal { background: #2dd4bf; top: -140px; right: -100px; }
+.glow.yellow { background: #facc15; bottom: -120px; left: 30%; }
+
+/* Page */
+.verify-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  padding-top: 2rem;
+}
+
+/* Header */
+.site-header {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.header-logo { width: 32px; height: 32px; object-fit: contain; }
+.brand-name { font-size: 1.25rem; font-weight: 700; color: #020617; }
+
+/* Card */
+.verify-card {
+  position: relative;
+  z-index: 1;
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  margin: 3rem auto;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+}
+
+.verify-logo { width: 56px; margin-bottom: 1rem; }
+
+.verify-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1rem;
+}
+
+.verify-success { color: #16a34a; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+.verify-error { color: #dc2626; font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+
+.verify-message {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.primary-btn, .secondary-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.8rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+}
+
+.primary-btn {
+  background: #14b8a6;
+  color: #020617;
+}
+
+.primary-btn:hover { background: #0ea5e9; }
+
+.secondary-btn {
+  background: white;
+  border: 2px solid #e2e8f0;
+  color: #0f172a;
+}
+
+.secondary-btn:hover { background: #f8fafc; }

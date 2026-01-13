@@ -219,6 +219,7 @@ router.get("/verify-email", async (req, res) => {
       // Or simply allow the error if the token is completely unknown.
       return res.status(400).json({ error: "Token invalid or already used." });
     }
+    const user = userResult.rows[0];
 
     // Update the user
     await pool.query(

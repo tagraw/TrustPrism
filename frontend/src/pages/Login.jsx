@@ -3,7 +3,8 @@ import { login } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { validateLogin } from "../util/validators";
 import AuthContext from "../context/AuthContext.jsx";
-import "./Login.css"
+import logo from "../assets/logo-removebg-preview.png";
+import "./Login.css";
 
 export default function Login() {
   const { setAuth } = useContext(AuthContext);
@@ -16,7 +17,6 @@ export default function Login() {
     e.preventDefault();
     setErrors({});
 
-    // Frontend validation
     const validationErrors = validateLogin({
       email: email.trim(),
       password: password.trim(),
@@ -36,7 +36,7 @@ export default function Login() {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       setAuth({ token, role });
-      // Role-based redirect
+
       if (role === "admin") navigate("/admin");
       else if (role === "researcher") navigate("/researcher");
       else navigate("/user");
@@ -46,38 +46,80 @@ export default function Login() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Login</h2>
+    <div className="login-page fade-in-wrapper">
+      
+      {/* Background glow */}
+      <div className="glow blue" />
+      <div className="glow teal" />
+      <div className="glow yellow" />
+          
+       <header className="site-header">
+        <div className="header-inner">
+          <Link to="/" className="header-brand">
+            <img
+              src={logo}
+              alt="TrustPrism Logo"
+              className="header-logo"
+            />
+            <span className="brand-name">TrustPrism</span>
+          </Link>
+        </div>
+      </header>
+      <div className="login-card">
+        <img src={logo} alt="TrustPrism" className="login-logo" />
 
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      {errors.email && <p style={{ color: "red" }}>{errors.email}</p>}
+        <h1 className="login-title">Welcome back</h1>
+        <p className="login-subtitle">
+          Secure access for research integrity
+        </p>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      {errors.password && <p style={{ color: "red" }}>{errors.password}</p>}
+        <form onSubmit={handleSubmit} className="login-form">
+          {/* Email */}
+          <label>Email Address</label>
+          <input
+            className={errors.email ? "error" : ""}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@university.edu"
+          />
+          {errors.email && <span className="error-text">{errors.email}</span>}
 
-      {errors.server && <p style={{ color: "red" }}>{errors.server}</p>}
+          {/* Password */}
+          <div className="password-row">
+            <label>Password</label>
+            <Link to="/forgot-password" className="forgot-link">
+              Forgot password?
+            </Link>
+          </div>
 
-      <button type="submit">Login</button>
+          <input
+            type="password"
+            className={errors.password ? "error" : ""}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+          {errors.password && (
+            <span className="error-text">{errors.password}</span>
+          )}
 
-      <div style={{ marginTop: "15px"}}>
-        <Link to="/forgot-password" style={{ fontSize: "0.9rem", color: "#007bff" }}>
-          Forgot Password?
+          {errors.server && (
+            <span className="error-text">{errors.server}</span>
+          )}
+
+          <button type="submit" className="login-btn">
+            Login
+          </button>
+        </form>
+
+        <div className="divider">
+          <span>New to TrustPrism?</span>
+        </div>
+
+        <Link to="/register" className="secondary-btn">
+          Create a new account
         </Link>
       </div>
-
-      <p>No account?</p>
-      <Link to="/register">
-        <button type="button">Sign Up</button>
-      </Link>
-    </form>
+    </div>
   );
 }

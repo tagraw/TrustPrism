@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { register } from "../api/auth";
 import { Link, useNavigate } from "react-router-dom";
+import logo from "../assets/logo-removebg-preview.png";
+import "./Register.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -56,47 +58,137 @@ export default function Register() {
   }
 
   return (
-    <form onSubmit={submit}>
-      <h2>Sign Up</h2>
+    <div className="register-page fade-in-wrapper">
+      {/* Background glow */}
+      <div className="glow blue" />
+      <div className="glow teal" />
+      <div className="glow yellow" />
 
-      <select value={role} onChange={(e) => setRole(e.target.value)}>
-        <option value="user">User</option>
-        <option value="researcher">Researcher</option>
-      </select>
+      <header className="site-header">
+        <div className="header-inner">
+         <Link to="/" className="header-brand">
+            <img
+              src={logo}
+              alt="TrustPrism Logo"
+              className="header-logo"
+            />
+          <span className="brand-name">TrustPrism</span>
+          </Link>
+        </div>
+      </header>
+      {/* Main */}
+      <main className="register-container">
+        <div className="register-card">
+          <h2>Create your account</h2>
 
-      <input name="first_name" placeholder="First name" onChange={update} required/>
-      <input name="last_name" placeholder="Last name" onChange={update} required/>
-      <input name="email" placeholder="Email" onChange={update} required/>
-      <input type="password" name="password" placeholder="Password" onChange={update} required/>
+          <form onSubmit={submit}>
+            <div className="row">
+              <div className="field">
+                <label>First name</label>
+                <input
+                  name="first_name"
+                  placeholder="John"
+                  onChange={update}
+                  required
+                />
+              </div>
 
-      {role === "user" && (
-        <input type="date" name="dob" onChange={update} required/>
-      )}
+              <div className="field">
+                <label>Last name</label>
+                <input
+                  name="last_name"
+                  placeholder="Doe"
+                  onChange={update}
+                  required
+                />
+              </div>
+            </div>
 
-      {role === "researcher" && (
-        <>
-          <input
-            name="groupId"
-            placeholder="Join Group ID (optional)"
-            onChange={update}
-          />
-          <input
-            name="createGroupName"
-            placeholder="Or Create New Group"
-            onChange={update}
-          />
-        </>
-      )}
+            <div className="field">
+              <label>Email address</label>
+              <input
+                name="email"
+                placeholder="john.doe@example.com"
+                onChange={update}
+                required
+              />
+            </div>
 
-      <button type="submit">Sign Up</button>
-      <p>Already have an account?</p>
-      <Link to="/login">
-        <button>Login</button>
-      </Link>
+            
+            <div className="field">
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                onChange={update}
+                required
+              />
+            </div>
+
+            <div className="role-toggle">
+              <button
+                type="button"
+                className={role === "user" ? "active" : ""}
+                onClick={() => setRole("user")}
+              >
+                <span className="material-icons-round">person_outline</span>
+                Participant
+              </button>
+              <button
+                type="button"
+                className={role === "researcher" ? "active" : ""}
+                onClick={() => setRole("researcher")}
+              >
+                <span className="material-icons-round">science</span>
+                Researcher
+              </button>
+            </div>
 
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p>{message}</p>}
-    </form>
+            {role === "user" && (
+              <div className="field">
+                <label>Date of birth</label>
+                <input type="date" name="dob" onChange={update} required />
+              </div>
+            )}
+
+            {role === "researcher" && (
+              <>
+                <div className="field">
+                  <label>Join Group ID (optional)</label>
+                  <input
+                    name="groupId"
+                    placeholder="e.g. TP-48291"
+                    onChange={update}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Create new group</label>
+                  <input
+                    name="createGroupName"
+                    placeholder="Trust & AI Lab"
+                    onChange={update}
+                  />
+                </div>
+              </>
+            )}
+
+
+            <button className="primary-btn" type="submit">
+              Complete Registration →
+            </button>
+
+            <p className="footer-text">
+              Already have an account? <Link to="/login">Sign In</Link>
+            </p>
+
+            {error && <p className="error">{error}</p>}
+            {message && <p className="success">{message}</p>}
+          </form>
+        </div>
+      </main>
+    </div>
   );
 }

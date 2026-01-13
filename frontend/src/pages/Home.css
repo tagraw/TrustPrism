@@ -193,7 +193,7 @@
   animation: logo-spin infinite 20s linear; /* Matches your App.css logic */
 }
 
-//* The main container for the heading */
+/* The main container for the heading */
 .hero-main-title {
   font-family: "Plus Jakarta Sans", sans-serif; /* Matches font-display */
   font-size: 3rem; /* text-5xl equivalent */
