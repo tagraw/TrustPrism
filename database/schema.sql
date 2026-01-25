@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS researcher_groups (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
---group members for a group 
+--group members for a group
 CREATE TABLE IF NOT EXISTS researcher_group_members (
   researcher_id UUID REFERENCES researchers(user_id) ON DELETE CASCADE,
   group_id UUID REFERENCES researcher_groups(id) ON DELETE CASCADE,
@@ -43,26 +43,91 @@ CREATE TABLE IF NOT EXISTS admins (
   super_admin BOOLEAN DEFAULT FALSE
 );
 
-ALTER TABLE users 
+ALTER TABLE users
 ADD COLUMN is_verified BOOLEAN DEFAULT FALSE,
 ADD COLUMN verification_token TEXT,
 ADD COLUMN reset_token TEXT,
 ADD COLUMN reset_token_expires TIMESTAMP;
 
-CREATE TABLE IF NOT EXISTS sessions (
+-- =========================
+-- GAME TABLE
+-- =========================
+CREATE TABLE IF NOT EXISTS games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  experiment_type TEXT NOT NULL,
-  started_at TIMESTAMP DEFAULT NOW(),
-  ended_at TIMESTAMP
+  name TEXT NOT NULL,
+  game_type TEXT NOT NULL,
+  researcher_id UUID NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMP DEFAULT NOW(),
+
+  CONSTRAINT fk_games_researcher
+    FOREIGN KEY (researcher_id)
+    REFERENCES researchers(user_id)
+    ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS ai_interactions (
+-- =========================
+-- GAME SESSIONS TABLE
+-- =========================
+CREATE TABLE IF NOT EXISTS game_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-  prompt TEXT NOT NULL,
-  ai_response TEXT,
-  hint_level INT,
-  confidence_score FLOAT,
-  created_at TIMESTAMP DEFAULT NOW()
+  game_id UUID NOT NULL,
+  participant_id UUID NOT NULL,
+  started_at TIMESTAMP DEFAULT NOW(),
+  ended_at TIMESTAMP,
+
+  CONSTRAINT fk_game_sessions_game
+    FOREIGN KEY (game_id)
+    REFERENCES games(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_game_sessions_participant
+    FOREIGN KEY (participant_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
 );
+
+-- =========================
+-- AI INTERACTION LOG TABLE
+-- =========================
+CREATE TABLE IF NOT EXISTS ai_interaction_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL,
+  session_id UUID NOT NULL,
+  participant_id UUID,
+  researcher_id UUID,
+  event_type TEXT NOT NULL,
+  ai_model TEXT,
+  payload JSONB,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW(),
+
+  CONSTRAINT fk_ai_logs_game
+    FOREIGN KEY (game_id)
+    REFERENCES games(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_ai_logs_session
+    FOREIGN KEY (session_id)
+    REFERENCES game_sessions(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_ai_logs_participant
+    FOREIGN KEY (participant_id)
+    REFERENCES users(id)
+    ON DELETE SET NULL,
+
+  CONSTRAINT fk_ai_logs_researcher
+    FOREIGN KEY (researcher_id)
+    REFERENCES researchers(user_id)
+    ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_sessions_game_id
+  ON game_sessions(game_id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_logs_session_id
+  ON ai_interaction_logs(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_logs_event_type
+  ON ai_interaction_logs(event_type);

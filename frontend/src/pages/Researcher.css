@@ -1,0 +1,187 @@
+/* ===== Layout ===== */
+.researcher-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: "Inter", sans-serif;
+}
+
+/* ===== Sidebar ===== */
+.researcher-sidebar {
+  width: 260px;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-brand {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.sidebar-brand img {
+  width: 40px;
+}
+
+.sidebar-brand span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.sidebar-nav a.active,
+.sidebar-nav a:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+/* ===== Main ===== */
+.researcher-main {
+  flex: 1;
+  padding: 2rem 3rem;
+}
+
+/* ===== Top Bar ===== */
+.researcher-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.search-input {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.create-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== Groups ===== */
+.groups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.groups-header p {
+  color: #64748b;
+}
+
+.export-btn {
+  border: 1px solid #e2e8f0;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ===== Grid ===== */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.group-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.group-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #e0f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0284c7;
+  margin-bottom: 1rem;
+}
+
+.status {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 100px;
+}
+
+.status.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.group-id {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+}
+
+.group-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.manage-btn {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== Empty ===== */
+.empty-state {
+  color: #64748b;
+  margin-top: 2rem;
+}
