@@ -144,6 +144,12 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
+    // Add the initial email to the user_emails table
+    await pool.query(
+      `INSERT INTO user_emails (user_id, email, is_primary, is_verified, verification_token)
+      VALUES ($1, $2, TRUE, FALSE, $3)`,
+      [user.id, email, verificationToken]
+    );
 
     return res.status(201).json({
       message: "Registration successful! Please check your email to verify your account.",
@@ -202,40 +208,53 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
   }
 });
 
+// backend/routes/auth.js
 
-// GET /auth/verify-email?token=...
 router.get("/verify-email", async (req, res) => {
   const { token } = req.query;
 
   try {
-    // Check if the user is already verified with this token
-    const userResult = await pool.query(
-      "SELECT is_verified FROM users WHERE verification_token = $1",
+    // 1. Check the user_emails table first since that's where multiple emails live
+    const emailResult = await pool.query(
+      "SELECT user_id, email FROM user_emails WHERE verification_token = $1",
       [token]
     );
 
-    if (userResult.rowCount === 0) {
-      // If the token isn't in verification_token, check if a user with that email is already verified
-      // Or simply allow the error if the token is completely unknown.
+    if (emailResult.rowCount === 0) {
       return res.status(400).json({ error: "Token invalid or already used." });
     }
-    const user = userResult.rows[0];
 
-    // Update the user
+    const { user_id, email } = emailResult.rows[0];
+
+    // 2. Start a transaction to ensure both tables update together
+    await pool.query("BEGIN");
+
+    // Update the specific email record
     await pool.query(
-      "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1",
+      "UPDATE user_emails SET is_verified = TRUE, verification_token = NULL WHERE verification_token = $1",
       [token]
     );
 
-    if (user.role === 'researcher') {
+    // Update the main user record
+    await pool.query(
+      "UPDATE users SET is_verified = TRUE, verification_token = NULL WHERE id = $1",
+      [user_id]
+    );
+
+    // If it's a researcher, verify their profile too (based on your existing logic)
+    const userCheck = await pool.query("SELECT role FROM users WHERE id = $1", [user_id]);
+    if (userCheck.rows[0].role === 'researcher') {
       await pool.query(
         "UPDATE researchers SET verified = TRUE WHERE user_id = $1",
-        [user.id]
+        [user_id]
       );
     }
 
+    await pool.query("COMMIT");
     return res.json({ message: "Email verified successfully!" });
   } catch (err) {
+    await pool.query("ROLLBACK");
+    console.error("Verification error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
@@ -334,6 +353,70 @@ router.get("/profile-stats", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+});
+
+// Add a secondary email
+router.post("/settings/emails", requireAuth, async (req, res) => {
+  const { email } = req.body;
+  const userId = req.user.id;
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+
+  try {
+    await pool.query(
+      "INSERT INTO user_emails (user_id, email, verification_token) VALUES ($1, $2, $3)",
+      [userId, email, verificationToken]
+    );
+
+    // Send verification for the new email
+    await sendVerificationEmail(email, verificationToken);
+
+    res.json({ message: "Secondary email added. Please verify it." });
+  } catch (err) {
+    res.status(400).json({ error: "Email already in use" });
+  }
+});
+
+// Get all emails for the settings page
+router.get("/settings/emails", requireAuth, async (req, res) => {
+  const result = await pool.query(
+    "SELECT email, is_primary, is_verified FROM user_emails WHERE user_id = $1",
+    [req.user.id]
+  );
+  res.json(result.rows);
+});
+
+// backend/routes/auth.js
+
+// Update basic profile info
+router.put("/settings/profile", requireAuth, async (req, res) => {
+  const { first_name, last_name } = req.body;
+  try {
+    await pool.query(
+      "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3",
+      [first_name, last_name, req.user.id]
+    );
+    res.json({ message: "Profile updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// Update password from settings
+router.put("/settings/password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    const userRes = await pool.query("SELECT password_hash FROM users WHERE id = $1", [req.user.id]);
+    const isMatch = await bcrypt.compare(currentPassword, userRes.rows[0].password_hash);
+
+    if (!isMatch) return res.status(401).json({ error: "Current password incorrect" });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, req.user.id]);
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update password" });
   }
 });
 

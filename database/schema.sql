@@ -131,3 +131,18 @@ CREATE INDEX IF NOT EXISTS idx_ai_logs_session_id
 
 CREATE INDEX IF NOT EXISTS idx_ai_logs_event_type
   ON ai_interaction_logs(event_type);
+
+  -- 1. Create the new table for multiple emails
+CREATE TABLE IF NOT EXISTS user_emails (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  is_primary BOOLEAN DEFAULT FALSE,
+  is_verified BOOLEAN DEFAULT FALSE,
+  verification_token TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. Migrate existing emails from 'users' to the new table
+INSERT INTO user_emails (user_id, email, is_primary, is_verified)
+SELECT id, email, TRUE, is_verified FROM users;
