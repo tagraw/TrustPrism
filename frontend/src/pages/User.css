@@ -46,10 +46,39 @@
   background: #e0f2fe;
   color: #0284c7;
 }
+/* Logout Button */
+.sidebar-footer button {
+  width: 100%;
 
-.sidebar-footer {
-  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 10px 14px;
+  border-radius: 10px;
+
+  background: #f9fafb;
+  color: #b91c1c;
+
+  border: 1px solid #fecaca;
+  cursor: pointer;
+
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
+
+.sidebar-footer button:hover {
+  background: #fee2e2;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.15);
+}
+
+.sidebar-footer button:active {
+  transform: translateY(1px);
+}
+
 
 /* ===== Main ===== */
 .dashboard-main {
@@ -181,4 +210,70 @@
 
 .primary-btn:hover {
   background: #0284c7;
+}
+
+/* Filter Button */
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border-radius: 8px;
+
+  background: #f4f6fa;
+  color: #374151;
+
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: #eef2ff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.filter-btn .material-icons-round {
+  font-size: 20px;
+}
+
+/* Dropdown */
+.filter-dropdown {
+  position: absolute;
+  margin-top: 8px;
+  right: 0;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+
+  z-index: 20;
+}
+
+.filter-option {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  color: #374151;
+
+  cursor: pointer;
+  white-space: nowrap;
+
+  transition: background 0.15s ease;
+}
+
+.filter-option:hover {
+  background: #f3f4f6;
+}
+
+/* Wrapper to anchor dropdown */
+.filter-wrapper {
+  position: relative;
 }

@@ -82,7 +82,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
     // 4. FIX: Include verificationToken in the params array
     const params = [email, hash, role, first_name, last_name, verificationToken];
-    
+
     // If it's a user, dob becomes the 7th parameter ($7)
     if (role === "user") params.push(dob);
 
@@ -96,7 +96,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
         console.error("Email failed to send:", emailErr);
     }
 
-    
+
 
     // If researcher, create profile
     if (role === "researcher") {
@@ -150,7 +150,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
       role: user.role,
       createdGroup: user.createdGroup ?? null
     });
-  
+
 
   } catch (err) {
     console.error(err);
@@ -181,8 +181,8 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     if (!user.is_verified) {
-      return res.status(403).json({ 
-        error: "Your email is not verified. Please check your inbox for the verification link." 
+      return res.status(403).json({
+        error: "Your email is not verified. Please check your inbox for the verification link."
       });
     }
 
@@ -241,7 +241,7 @@ router.get("/verify-email", async (req, res) => {
 });
 
 // POST /auth/forgot-password
-router.post("/forgot-password", 
+router.post("/forgot-password",
   body("email").isEmail().normalizeEmail(), // This handles the dots/casing automatically
   async (req, res) => {
     const errors = validationResult(req);
@@ -264,7 +264,7 @@ router.post("/forgot-password",
       );
 
       // FIX: Pass ONLY the raw token to the email utility
-      await sendPasswordResetEmail(email, token); 
+      await sendPasswordResetEmail(email, token);
 
       res.json({ message: "Reset email sent successfully" });
     } catch (err) {
@@ -282,7 +282,7 @@ router.post("/reset-password", async (req, res) => {
     // SECURITY: Pass the current JS date ($2) instead of using SQL NOW()
     const result = await pool.query(
       "SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > $2",
-      [token, new Date()] 
+      [token, new Date()]
     );
 
     if (result.rowCount === 0) {
@@ -299,6 +299,41 @@ router.post("/reset-password", async (req, res) => {
   } catch (err) {
     console.error("Reset Password Error:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// backend/routes/auth.js (or similar)
+
+router.get("/profile-stats", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Get User Name
+    const userRes = await pool.query(
+      "SELECT first_name, role FROM users WHERE id = $1",
+      [userId]
+    );
+
+    // 2. Count Completed Sessions (where ended_at is not null)
+    const sessionsRes = await pool.query(
+      "SELECT COUNT(*) FROM game_sessions WHERE participant_id = $1 AND ended_at IS NOT NULL",
+      [userId]
+    );
+
+    // 3. Count Available Games (status 'published' or similar)
+    const gamesRes = await pool.query(
+      "SELECT COUNT(*) FROM games WHERE status = 'published'"
+    );
+
+    res.json({
+      firstName: userRes.rows[0].first_name,
+      role: userRes.rows[0].role,
+      sessionsCompleted: parseInt(sessionsRes.rows[0].count),
+      availableGames: parseInt(gamesRes.rows[0].count)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
   }
 });
 
