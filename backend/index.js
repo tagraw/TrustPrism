@@ -14,6 +14,11 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 import authRoutes from "./routes/auth.js";
 import groupRoutes from "./routes/groups.js";
 import sessionRoutes from "./routes/sessions.js";
+import projectRoutes from "./routes/projects.js";
+import dashboardRoutes from "./routes/dashboard.js";
+import insightsRoutes from "./routes/insights.js";
+import chatRoutes from "./routes/chat.js";
+import notificationRoutes from "./routes/notifications.js";
 console.log("✅ .env loaded:", {
   DB_HOST: process.env.DB_HOST,
   DB_NAME: process.env.DB_NAME,
@@ -23,7 +28,42 @@ console.log("✅ .env loaded:", {
 });
 console.log("🔥 INDEX.JS LOADED FROM:", import.meta.url);
 
+import { createServer } from "http";
+import { Server } from "socket.io";
+
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // allow all for dev
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+// Attach io to req for usage in routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Socket connection handler
+io.on("connection", (socket) => {
+  console.log("Websocket connected:", socket.id);
+
+  socket.on("join_project", (projectId) => {
+    socket.join(`project_${projectId}`);
+    console.log(`Socket ${socket.id} joined project_${projectId}`);
+  });
+
+  socket.on("join_user", (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`Socket ${socket.id} joined user_${userId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Websocket disconnected:", socket.id);
+  });
+});
 
 app.use(cors());
 app.use(express.json());
@@ -40,12 +80,17 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.use("/auth", authRoutes);
 app.use("/groups", groupRoutes);
 app.use("/sessions", sessionRoutes);
+app.use("/projects", projectRoutes);
+app.use("/dashboard", dashboardRoutes);
+app.use("/insights", insightsRoutes);
+app.use("/chat", chatRoutes);
+app.use("/notifications", notificationRoutes);
 
 // Catch-all unmatched route
 app.use((req, res) => {
   console.log("⚠️ UNMATCHED ROUTE:", req.method, req.url);
   res.status(404).json({ error: "Route not found" });
 });
-app.listen(5000, '0.0.0.0', () => {
+server.listen(5000, '0.0.0.0', () => {
   console.log('Backend running on port 5000 on 0.0.0.0');
 });

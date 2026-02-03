@@ -3,8 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-import {loginLimiter, signupLimiter} from "../middleware/rateLimit.js";
-import {loginValidation, signupValidation} from "../middleware/validation.js";
+import { loginLimiter, signupLimiter } from "../middleware/rateLimit.js";
+import { loginValidation, signupValidation } from "../middleware/validation.js";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../util/email.js";
 import { sendPasswordResetEmail } from "../util/email.js";
@@ -91,53 +91,53 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
     // 5. Send Email (ensure variable name matches: verificationToken)
     try {
-        await sendVerificationEmail(email, verificationToken);
+      await sendVerificationEmail(email, verificationToken);
     } catch (emailErr) {
-        console.error("Email failed to send:", emailErr);
+      console.error("Email failed to send:", emailErr);
     }
 
 
 
     // If researcher, create profile
     if (role === "researcher") {
-  // Create researcher profile
-  await pool.query(
-    `INSERT INTO researchers (user_id) VALUES ($1)`,
-    [user.id]
-  );
+      // Create researcher profile
+      await pool.query(
+        `INSERT INTO researchers (user_id) VALUES ($1)`,
+        [user.id]
+      );
 
-  let createdGroupId = null;
+      let createdGroupId = null;
 
-  // CREATE NEW GROUP
-  if (createGroupName && createGroupName.trim() !== "") {
-      const groupResult = await pool.query(
-        `INSERT INTO researcher_groups (name, description, created_by)
+      // CREATE NEW GROUP
+      if (createGroupName && createGroupName.trim() !== "") {
+        const groupResult = await pool.query(
+          `INSERT INTO researcher_groups (name, description, created_by)
         VALUES ($1, $2, $3)
         RETURNING id`,
-        [createGroupName, "", user.id]
-      );
+          [createGroupName, "", user.id]
+        );
 
-      createdGroupId = groupResult.rows[0].id;
+        createdGroupId = groupResult.rows[0].id;
 
-      // Add creator as owner
-      await pool.query(
-        `INSERT INTO researcher_group_members (researcher_id, group_id, role)
+        // Add creator as owner
+        await pool.query(
+          `INSERT INTO researcher_group_members (researcher_id, group_id, role)
         VALUES ($1, $2, 'owner')`,
-        [user.id, createdGroupId]
-      );
-    }
+          [user.id, createdGroupId]
+        );
+      }
 
-    // JOIN EXISTING GROUP
-    if (groupId && groupId.trim() !== "") {
-      await pool.query(
-        `INSERT INTO researcher_group_members (researcher_id, group_id)
+      // JOIN EXISTING GROUP
+      if (groupId && groupId.trim() !== "") {
+        await pool.query(
+          `INSERT INTO researcher_group_members (researcher_id, group_id)
         VALUES ($1, $2)`,
-        [user.id, groupId]
-      );
-    }
+          [user.id, groupId]
+        );
+      }
 
-    user.createdGroup = createdGroupId;
-  }
+      user.createdGroup = createdGroupId;
+    }
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
@@ -388,17 +388,58 @@ router.get("/settings/emails", requireAuth, async (req, res) => {
 
 // backend/routes/auth.js
 
-// Update basic profile info
+// Update basic profile info + extended fields
 router.put("/settings/profile", requireAuth, async (req, res) => {
-  const { first_name, last_name } = req.body;
+  const {
+    first_name,
+    last_name,
+    affiliation,
+    research_interests,
+    api_key,
+    notification_prefs
+  } = req.body;
+
   try {
     await pool.query(
-      "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3",
-      [first_name, last_name, req.user.id]
+      `UPDATE users
+       SET first_name = $1,
+           last_name = $2,
+           affiliation = $3,
+           research_interests = $4,
+           api_key = $5,
+           notification_prefs = $6
+       WHERE id = $7`,
+      [
+        first_name,
+        last_name,
+        affiliation,
+        research_interests, // Expected to be an array or null
+        api_key,
+        notification_prefs, // Expected to be JSON object
+        req.user.id
+      ]
     );
     res.json({ message: "Profile updated successfully" });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+// Get full settings profile
+router.get("/settings/profile", requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT first_name, last_name, email, affiliation, research_interests, api_key, notification_prefs
+       FROM users WHERE id = $1`,
+      [req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "User not found" });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch profile" });
   }
 });
 

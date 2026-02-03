@@ -1,0 +1,16 @@
+-- Migration to add missing columns to existing tables
+
+-- GAMES TABLE
+ALTER TABLE games ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS experimental_conditions JSONB;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS consent_form_url TEXT;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS target_sample_size INTEGER;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS irb_approval BOOLEAN DEFAULT FALSE;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+-- AI INTERACTION LOGS TABLE
+ALTER TABLE ai_interaction_logs ADD COLUMN IF NOT EXISTS researcher_id UUID REFERENCES researchers(user_id) ON DELETE SET NULL;
+ALTER TABLE ai_interaction_logs ADD COLUMN IF NOT EXISTS payload JSONB;
+
+-- GAME SESSIONS
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS score INTEGER;
