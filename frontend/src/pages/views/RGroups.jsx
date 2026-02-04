@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import GroupModal from "../../components/GroupModal";
+import "./RGroups.css";
 
 export default function RGroups({ onViewProject }) {
   const [groups, setGroups] = useState([]);
@@ -69,63 +70,107 @@ export default function RGroups({ onViewProject }) {
     g.id.includes(searchQuery)
   );
 
+  // Helper to pick a consistent icon color based on ID string
+  const getIconColorClass = (id) => {
+    const sum = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = ["rg-icon-blue", "rg-icon-orange", "rg-icon-green", "rg-icon-purple", "rg-icon-pink"];
+    return colors[sum % colors.length];
+  };
+
   if (loading) return <div className="p-8">Loading groups...</div>;
 
   return (
-    <main className="researcher-main">
-      <header className="researcher-topbar">
-        <h1>Research Groups</h1>
-
-        <div className="topbar-actions">
-          <input
-            className="search-input"
-            placeholder="Search groups..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button className="create-btn" onClick={handleCreateGroup}>
-            <span className="material-icons-round">add</span>
-            Create New Group
-          </button>
+    <main className="rg-layout">
+      {/* Header */}
+      <header className="rg-header">
+        <div className="rg-title">
+          <h1>Research Groups</h1>
+          <p>Manage active cohorts and collaborate with other researchers.</p>
         </div>
+        <button className="rg-create-btn" onClick={handleCreateGroup}>
+          <span className="material-icons-round">group_add</span>
+          Create New Group
+        </button>
       </header>
 
-      <section className="groups-section">
-        <div className="groups-header">
+      {/* Stats Row */}
+      <section className="rg-stats-row">
+        <div className="rg-stat-card">
           <div>
-            <h2>Your Research Groups</h2>
-            <p>Manage active cohorts and collaborate with other researchers.</p>
+            <div className="rg-stat-label">Total Groups</div>
+            <div className="rg-stat-value">{groups.length < 10 ? `0${groups.length}` : groups.length}</div>
           </div>
         </div>
-
-        {filteredGroups.length === 0 ? (
-          <p className="empty-state">
-            {searchQuery ? "No groups match your search." : "You have not created or joined any research groups yet."}
-          </p>
-        ) : (
-          <div className="groups-grid">
-            {filteredGroups.map((g) => (
-              <div key={g.id} className="group-card">
-                <div className="group-icon">
-                  <span className="material-icons-round">groups</span>
-                </div>
-
-                <span className="status active">ACTIVE</span>
-
-                <h3>{g.name}</h3>
-                <p className="group-id">ID: {g.id}</p>
-                <p className="description">{g.description || "No description"}</p>
-
-                <div className="group-footer">
-                  <button className="manage-btn" onClick={() => setSelectedGroup(g)}>View Details</button>
-                  <button className="manage-btn secondary" onClick={() => setSelectedGroup(g)}>Invite</button>
-                </div>
-              </div>
-            ))}
+        <div className="rg-stat-card">
+          <div>
+            <div className="rg-stat-label">Active Collaborators</div>
+            <div className="rg-stat-value">0</div>
           </div>
-        )}
+        </div>
       </section>
 
+      {/* Groups Grid */}
+      <section className="rg-grid">
+        {/* Render filtered groups as cards */}
+        {filteredGroups.map((g) => {
+          // Mocking member count for visual fidelity if not present
+          const memberCount = 0
+          const displayCount = memberCount > 15 ? 15 : memberCount; // max for avatars logic maybe?
+
+          return (
+            <div key={g.id} className="rg-card" onClick={() => setSelectedGroup(g)}>
+              <div className="rg-card-header">
+                <div className={`rg-icon-wrapper ${getIconColorClass(g.id)}`}>
+                  <span className="material-icons-round">
+                    {/* Randomize icon slightly based on name length for variety */}
+                    {g.name.length % 2 === 0 ? 'security' : g.name.length % 3 === 0 ? 'psychology' : 'groups'}
+                  </span>
+                </div>
+                <span className="material-icons-round rg-card-menu">more_horiz</span>
+              </div>
+
+              <h3 className="rg-card-title">{g.name}</h3>
+              <p className="rg-card-desc">
+                {g.description || "Research group focused on human-AI interaction studies and ethical guidelines."}
+              </p>
+
+              <div className="rg-card-footer">
+                <div className="rg-members">
+                  <span className="material-icons-round" style={{ fontSize: '1.2rem', color: '#94a3b8' }}>people</span>
+                  {memberCount} Members
+                </div>
+                <div className="rg-avatars">
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* 'Create New' Card as the last item in the grid */}
+        <div className="rg-card-new" onClick={handleCreateGroup}>
+          <div className="rg-add-circle">
+            <span className="material-icons-round" style={{ fontSize: '1.8rem' }}>add</span>
+          </div>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#0f172a' }}>Start a new group</h3>
+          <p style={{ margin: 0, fontSize: '0.8rem', width: '70%', textAlign: 'center' }}>
+            Invite collaborators and share resources.
+          </p>
+        </div>
+      </section>
+
+      {/* Active Collaborators Section */}
+      <section className="rg-collab-section">
+        <div className="rg-collab-header">
+          <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Active Collaborators</h2>
+          <span className="rg-view-all">View All Directory</span>
+        </div>
+
+        <div className="rg-collab-list">
+
+        </div>
+      </section>
+
+      {/* Group Details Modal */}
       {selectedGroup && (
         <GroupModal
           group={selectedGroup}

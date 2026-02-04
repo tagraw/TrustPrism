@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
+import "./GroupModal.css";
 
 export default function GroupModal({ group, onClose, onViewProject }) {
     const [activeTab, setActiveTab] = useState("members"); // members, projects
     const [details, setDetails] = useState(null);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Invite State
     const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteRole, setInviteRole] = useState("Researcher (Full Access)");
 
     useEffect(() => {
         if (!group) return;
@@ -39,95 +43,150 @@ export default function GroupModal({ group, onClose, onViewProject }) {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ email: inviteEmail })
+                body: JSON.stringify({ email: inviteEmail, role: inviteRole })
             });
             if (res.ok) {
                 alert(`Invitation sent to ${inviteEmail}`);
                 setInviteEmail("");
+            } else {
+                alert("Failed to send invite");
             }
         } catch (e) {
-            alert("Failed to send invite");
+            alert("Network error sending invite");
         }
     }
 
     if (!group) return null;
 
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <header className="modal-header">
-                    <h2>{group.name}</h2>
-                    <button className="close-btn material-icons-round" onClick={onClose}>close</button>
-                </header>
+    const memberCount = details?.members?.length || 0;
+    const projectCount = projects?.length || 0;
 
-                <div className="modal-body">
-                    <div className="tabs" style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                        <button
-                            className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('members')}
-                            style={{ padding: '10px 20px', border: 'none', background: 'none', borderBottom: activeTab === 'members' ? '2px solid #3b82f6' : 'none', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                            Members
+    return (
+        <div className="gm-overlay" onClick={onClose}>
+            <div className="gm-content" onClick={e => e.stopPropagation()}>
+                {/* Close Button Top Right */}
+                <button className="material-icons-round gm-close-abs" onClick={onClose}>close</button>
+
+                {/* Left Side: Main Content */}
+                <div className="gm-main">
+                    {/* Header */}
+                    <div className="gm-header">
+                        <div className="gm-icon-large">
+                            <span className="material-icons-round" style={{ fontSize: '2rem' }}>groups</span>
+                        </div>
+                        <div className="gm-header-info">
+                            <h2>{group.name}</h2>
+                            <p className="gm-header-desc">
+                                {details?.description || group.description || "Research collective focused on human-AI interaction."}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="gm-tabs">
+                        <button className={`gm-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
+                            <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>people</span>
+                            Members <span className="gm-badge">{loading ? '-' : memberCount}</span>
                         </button>
-                        <button
-                            className={`tab-btn ${activeTab === 'projects' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('projects')}
-                            style={{ padding: '10px 20px', border: 'none', background: 'none', borderBottom: activeTab === 'projects' ? '2px solid #3b82f6' : 'none', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                            Projects
+                        <button className={`gm-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
+                            <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>science</span>
+                            Group Studies <span className="gm-badge">{loading ? '-' : projectCount}</span>
                         </button>
                     </div>
 
-                    {loading ? <p>Loading group data...</p> : (
-                        <>
-                            {activeTab === 'members' && (
-                                <div className="members-view">
-                                    <p>{details?.description || group.description}</p>
+                    {/* Tab Content */}
+                    <div className="gm-tab-content">
+                        {loading && <p>Loading...</p>}
 
-                                    <div className="invite-box" style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', marginBottom: '20px', display: 'flex', gap: '10px' }}>
-                                        <input
-                                            placeholder="Enter email to invite..."
-                                            value={inviteEmail}
-                                            onChange={e => setInviteEmail(e.target.value)}
-                                            style={{ flex: 1, padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                                        />
-                                        <button className="primary-btn" onClick={sendInvite}>Invite</button>
+                        {!loading && activeTab === 'members' && (
+                            <div className="gm-members-view">
+                                <div className="gm-list-header">
+                                    <span>Member</span>
+                                    <div style={{ display: 'flex', gap: '3rem', marginRight: '1rem' }}>
+                                        <span>Role</span>
+                                        <span>Activity</span>
                                     </div>
-
-                                    <h3>Members</h3>
-                                    <ul className="members-list" style={{ listStyle: 'none', padding: 0 }}>
-                                        {details?.members?.map(m => (
-                                            <li key={m.id} style={{ padding: '10px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                </div>
+                                <ul style={{ listStyle: 'none', padding: 0 }}>
+                                    {details?.members?.map((m, i) => (
+                                        <li key={m.id} className="gm-member-row">
+                                            <div className="gm-member-info">
                                                 <div>
-                                                    <strong>{m.first_name} {m.last_name}</strong>
-                                                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{m.email}</div>
+                                                    <strong style={{ display: 'block', color: '#0f172a' }}>{m.first_name} {m.last_name}</strong>
+                                                    <small style={{ color: '#64748b' }}>{m.email}</small>
                                                 </div>
-                                                <span className={`badge ${m.role === 'owner' ? 'published' : 'draft'}`} style={{ fontSize: '0.7rem' }}>
-                                                    {m.role}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '3rem', alignItems: 'center' }}>
+                                                <span className={`gm-role-badge ${m.role === 'owner' ? '' : m.role === 'researcher' ? 'researcher' : 'viewer'}`}>
+                                                    {m.role || 'Member'}
                                                 </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
+                                                <span style={{ fontSize: '0.85rem', color: '#64748b', minWidth: '70px', textAlign: 'right' }}>
+                                                    {i === 0 ? '2 mins ago' : i === 1 ? '1 hour ago' : 'Yesterday'}
+                                                </span>
+                                            </div>
+                                        </li>
+                                    ))}
+                                    {(!details?.members || details.members.length === 0) && <p>No members found.</p>}
+                                </ul>
+                            </div>
+                        )}
 
-                            {activeTab === 'projects' && (
-                                <div className="group-projects-view">
-                                    {projects.length === 0 ? <p>No projects in this group yet.</p> : (
-                                        <ul className="project-list">
-                                            {projects.map(p => (
-                                                <li key={p.id} className="project-list-item" onClick={() => onViewProject(p)} style={{ cursor: 'pointer' }}>
-                                                    <strong>{p.name}</strong>
-                                                    <span className={`badge ${p.status || 'draft'}`}>{p.status || 'draft'}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
+                        {!loading && activeTab === 'projects' && (
+                            <div className="gm-projects-view">
+                                <div className="gm-section-title">Group Study Activity</div>
+                                {projects.map(p => (
+                                    <div key={p.id} className="gm-project-card" onClick={() => onViewProject(p)}>
+                                        <div className="gm-proj-header">
+                                            <span className={`gm-status ${p.status === 'published' ? 'active' : 'draft'}`}>
+                                                {p.status || 'DRAFT'}
+                                            </span>
+                                            <span className="material-icons-round" style={{ fontSize: '1rem', color: '#94a3b8' }}>chat</span>
+                                        </div>
+                                        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#0f172a' }}>{p.name}</h4>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Audit in progress</span>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#0ea5e9' }}>View Info</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {projects.length === 0 && <p style={{ color: '#64748b' }}>No studies started yet.</p>}
+                            </div>
+                        )}
+                    </div>
                 </div>
+
+                {/* Right Side: Sidebar */}
+                <aside className="gm-sidebar">
+                    <div className="gm-sb-title">Quick Invite</div>
+
+                    <div className="gm-input-group">
+                        <label className="gm-label">Email Address</label>
+                        <input
+                            className="gm-input"
+                            placeholder="colleague@research.edu"
+                            value={inviteEmail}
+                            onChange={e => setInviteEmail(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="gm-input-group">
+                        <label className="gm-label">Assign Role</label>
+                        <select
+                            className="gm-select"
+                            value={inviteRole}
+                            onChange={e => setInviteRole(e.target.value)}
+                        >
+                            <option>Researcher (Full Access)</option>
+                            <option>Viewer (Read Only)</option>
+                            <option>Admin</option>
+                        </select>
+                    </div>
+
+                    <button className="gm-btn-invite" onClick={sendInvite}>Send Invitation</button>
+
+
+                </aside>
+
             </div>
         </div>
     );

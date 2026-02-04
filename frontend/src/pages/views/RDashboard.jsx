@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import Notifications from "../../components/Notifications";
+import "./RDashboard.css";
 
 export default function RDashboard({ setActiveView, onViewInsights, onViewProject }) {
   const [stats, setStats] = useState({ projects: [], activity: [] });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("published");
 
   useEffect(() => {
     async function fetchStats() {
@@ -32,110 +35,92 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
     return acc;
   }, {});
 
+  const filteredProjects = stats.projects.filter(p => {
+    const status = p.status || 'draft';
+    return status === activeTab;
+  });
+
   return (
-    <main className="researcher-main">
-      <header className="researcher-topbar">
-        <h1>Researcher Dashboard</h1>
-        <div className="topbar-actions">
-          <input className="search-input" placeholder="Search..." />
-          <button className="create-btn" onClick={() => setActiveView("create")}>
-            <span className="material-icons-round">add</span>
-            Create New Project
+    <main className="rd-main">
+      <header className="rd-topbar">
+        <div>
+          <h1>Researcher Dashboard</h1>
+        </div>
+        <div className="rd-actions">
+          <input className="rd-search" placeholder="Search studies..." />
+          <Notifications />
+          <button className="rd-create" onClick={() => setActiveView("create")}>
+            + Create New Game
           </button>
         </div>
       </header>
 
-      <div className="dashboard-grid">
-        {/* Status Overview */}
-        <section className="dashboard-card overview">
-          <h2>Project Status</h2>
-          <div className="stats-row">
-            <div className="stat-item">
-              <span className="count">{projectCounts['draft'] || 0}</span>
-              <span className="label">Drafts</span>
+      <div className="rd-tabs">
+        <button
+          className={activeTab === 'draft' ? 'active' : ''}
+          onClick={() => setActiveTab('draft')}
+        >
+          Drafts <span>{projectCounts['draft'] || 0}</span>
+        </button>
+        <button
+          className={activeTab === 'pending_review' ? 'active' : ''}
+          onClick={() => setActiveTab('pending_review')}
+        >
+          Pending Review <span>{projectCounts['pending_review'] || 0}</span>
+        </button>
+        <button
+          className={activeTab === 'published' ? 'active' : ''}
+          onClick={() => setActiveTab('published')}
+        >
+          Published <span>{projectCounts['published'] || 0}</span>
+        </button>
+      </div>
+
+      <div className="rd-card-grid">
+        {filteredProjects.length === 0 ? (
+          <div style={{ gridColumn: '1/-1', color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+            No {activeTab.replace('_', ' ')} projects found.
+          </div>
+        ) : (
+          filteredProjects.map(p => (
+            <div key={p.id} className="rd-card" onClick={() => onViewProject(p)}>
+              <div className="rd-card-header">
+                <span className={`badge active`}>
+                  {activeTab === 'published' ? 'ACTIVE STUDY' : activeTab === 'pending_review' ? 'IN REVIEW' : 'DRAFT'}
+                </span>
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{p.name}</h3>
+              <p className="updated">Last update: {new Date(p.updated_at || p.created_at).toLocaleDateString()}</p>
+
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                </div>
+                <span className="view-link">View Info</span>
+              </div>
             </div>
-            <div className="stat-item">
-              <span className="count">{projectCounts['pending_review'] || 0}</span>
-              <span className="label">Pending Review</span>
-            </div>
-            <div className="stat-item active">
-              <span className="count">{projectCounts['published'] || 0}</span>
-              <span className="label">Published</span>
-            </div>
-          </div>
+          ))
+        )}
+      </div>
 
-          <div className="projects-list-container">
-            <h3>Pending Review</h3>
-            {stats.projects.filter(p => !p.status || p.status === 'draft' || p.status === 'pending_review').length === 0 ? (
-              <p>No pending projects.</p>
-            ) : (
-              <ul className="project-list">
-                {stats.projects.filter(p => p.status === 'pending_review').map(p => (
-                  <li key={p.id} className="project-list-item" onClick={() => onViewProject(p)} style={{ cursor: 'pointer' }}>
-                    <strong>{p.name}</strong>
-                    <span className="badge pending_review">Pending</span>
-                  </li>
-                ))}
-                {stats.projects.filter(p => !p.status || p.status === 'draft').map(p => (
-                  <li key={p.id} className="project-list-item" onClick={() => onViewProject(p)} style={{ cursor: 'pointer' }}>
-                    <strong>{p.name}</strong>
-                    <span className="badge draft">Draft</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      {/* Summary Bar - kept as user designed */}
+      <section className="rd-summary">
+        <div>
+          <small>Total Participants</small>
+        </div>
+        <div>
+          <small>Active Studies</small>
+          <strong>{projectCounts["published"] || 0}</strong>
+        </div>
+        <div>
+          <small>Data Storage</small>
+        </div>
+        <div>
+          <small>Audit Score</small>
+          <strong className="green">-</strong>
+        </div>
+      </section>
 
-          <div className="projects-list-container">
-            <h3>Published Games</h3>
-            {stats.projects.filter(p => p.status === 'published').length === 0 ? <p>No published games.</p> : (
-              <ul className="project-list">
-                {stats.projects.filter(p => p.status === 'published').map(p => (
-                  <li key={p.id} className="project-list-item" onClick={() => onViewProject(p)} style={{ cursor: 'pointer' }}>
-                    <strong>{p.name}</strong>
-                    <span className="badge published">Published</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-        </section>
-
-        {/* Recent Activity */}
-        <section className="dashboard-card activity">
-          <h2>Recent Activity</h2>
-          <ul className="activity-list">
-            {stats.activity.length === 0 ? (
-              <li className="empty">No recent activity</li>
-            ) : (
-              stats.activity.map((log) => (
-                <li key={log.id} className="activity-item">
-                  <span className="icon material-icons-round">
-                    {log.action_type === 'create_project' ? 'add_circle' : 'info'}
-                  </span>
-                  <div className="details">
-                    <p>{log.description}</p>
-                    <small>{new Date(log.created_at).toLocaleDateString()}</small>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </section>
-
-        {/* Quick Actions / Chat Placeholder */}
-        <section className="dashboard-card actions">
-          <h2>Admin Support</h2>
-          <div className="chat-placeholder">
-            <p>Need help with your study design?</p>
-            <button className="chat-btn">
-              <span className="material-icons-round">chat</span>
-              Chat with Admin
-            </button>
-          </div>
-        </section>
-      </div >
-    </main >
+    </main>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getMyGroups } from "../api/groups";
 import LogoutButton from "../components/LogoutButton";
-import Notifications from "../components/Notifications";
+
 import logo from "../assets/logo-removebg-preview.png";
 import "./Researcher.css";
 
@@ -114,24 +114,25 @@ export default function Researcher() {
 
 
         <div className="sidebar-footer">
-          <Notifications />
           <LogoutButton />
         </div>
-      </aside>
+      </aside >
 
       {renderContent()}
 
-      {modalProject && (
-        <ProjectModal
-          project={modalProject}
-          onClose={() => setModalProject(null)}
-          onViewInsights={() => {
-            setModalProject(null);
-            setSelectedProject(modalProject.id);
-            setActiveView("insights");
-          }}
-        />
-      )}
-    </div>
+      {
+        modalProject && (
+          <ProjectModal
+            project={modalProject}
+            onClose={() => setModalProject(null)}
+            onViewInsights={() => {
+              setModalProject(null);
+              setSelectedProject(modalProject.id);
+              setActiveView("insights");
+            }}
+          />
+        )
+      }
+    </div >
   );
 }

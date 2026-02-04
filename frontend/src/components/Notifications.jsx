@@ -44,11 +44,11 @@ export default function Notifications() {
 
             {showDropdown && (
                 <div className="notifications-dropdown" style={{
-                    position: 'absolute', bottom: '100%', left: 0,
+                    position: 'absolute', top: '100%', right: 0,
                     background: 'white', border: '1px solid #ccc', borderRadius: '8px',
                     width: '300px', maxHeight: '400px', overflowY: 'auto',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000,
-                    marginBottom: '10px' // Since it's likely in sidebar bottom
+                    marginTop: '10px'
                 }}>
                     <div style={{ padding: '10px', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Notifications</div>
                     {notifications.length === 0 ? <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No notifications</div> : (

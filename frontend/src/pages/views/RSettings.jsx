@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import "./RSettings.css";
 
 export default function RSettings() {
   const [profile, setProfile] = useState({
@@ -22,23 +23,28 @@ export default function RSettings() {
   async function fetchSettings() {
     try {
       const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token} ` };
+      const headers = { Authorization: `Bearer ${token}` };
 
-      const [profileRes, emailsRes] = await Promise.all([
-        fetch("http://localhost:5000/auth/settings/profile", { headers }),
-        fetch("http://localhost:5000/auth/settings/emails", { headers })
-      ]);
+      // In a real app we might handle partial failures, but for now wrap both
+      try {
+        const [profileRes, emailsRes] = await Promise.all([
+          fetch("http://localhost:5000/auth/settings/profile", { headers }),
+          fetch("http://localhost:5000/auth/settings/emails", { headers })
+        ]);
 
-      if (profileRes.ok) {
-        const data = await profileRes.json();
-        // Ensure defaults
-        setProfile({
-          ...data,
-          research_interests: data.research_interests || [],
-          notification_prefs: data.notification_prefs || { email: true, push: false }
-        });
+        if (profileRes.ok) {
+          const data = await profileRes.json();
+          setProfile({
+            ...data,
+            research_interests: data.research_interests || [],
+            notification_prefs: data.notification_prefs || { email: true, push: false }
+          });
+        }
+        if (emailsRes.ok) setEmails(await emailsRes.json());
+      } catch (inner) {
+        console.error("Network error fetching settings", inner);
       }
-      if (emailsRes.ok) setEmails(await emailsRes.json());
+
     } catch (err) {
       console.error("Failed to load settings", err);
     } finally {
@@ -55,18 +61,16 @@ export default function RSettings() {
         ...prev,
         notification_prefs: { ...prev.notification_prefs, [prefKey]: checked }
       }));
-    } else if (name === "research_interests") {
-      // Split by comma for display/edit as string, but we store as string in state for input
-      // Actually, let's just handle it as text and split on submit
-      // OR handle it here. Let's start with simple text input that maps to array
-      setProfile(prev => ({ ...prev, [name]: value.split(",").map(s => s.trim()) }));
     } else {
       setProfile(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  // Helper for text area interaction
   const handleInterestsChange = (e) => {
+    // Keep it as a string in the separate handler if needed,
+    // or just split on blur/submit. For better UX, let's keep it simple text and split on save.
+    // Ideally we store the raw string in state for the textarea, but here we are mapping back/forth to array.
+    // To simplify: we'll just update the array on every keystroke by splitting.
     setProfile(prev => ({ ...prev, research_interests: e.target.value.split(",") }));
   };
 
@@ -74,18 +78,25 @@ export default function RSettings() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
+      // Clean up interests before sending
+      const cleanedProfile = {
+        ...profile,
+        research_interests: profile.research_interests.map(s => s.trim()).filter(Boolean)
+      };
+
       const res = await fetch("http://localhost:5000/auth/settings/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token} `
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(profile)
+        body: JSON.stringify(cleanedProfile)
       });
-      if (res.ok) alert("Profile updated!");
+      if (res.ok) alert("Profile updated successfully!");
       else alert("Failed to update profile");
     } catch (err) {
       console.error(err);
+      alert("Error saving profile");
     }
   };
 
@@ -98,14 +109,14 @@ export default function RSettings() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token} `
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ email: newEmail })
       });
       if (res.ok) {
-        alert("Email added! Please verify it.");
+        alert("Email added! Please check your inbox to verify.");
         setNewEmail("");
-        fetchSettings();
+        fetchSettings(); // Refresh list
       } else {
         alert("Failed to add email.");
       }
@@ -114,119 +125,149 @@ export default function RSettings() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading settings...</div>;
+  if (loading) return <div className="rs-layout">Loading settings...</div>;
 
   return (
-    <main className="researcher-main">
-      <header className="researcher-topbar">
+    <main className="rs-layout">
+      <header className="rs-header">
         <h1>Settings</h1>
+        <p className="rs-subtitle">Manage your account preferences and research profile.</p>
       </header>
 
-      <div className="settings-grid" style={{ display: "grid", gap: "2rem", maxWidth: "1000px", padding: "0" }}>
+      <div className="rs-container">
 
         {/* Profile Section */}
-        <section className="settings-section">
-          <div className="settings-header">
+        <section className="rs-card">
+          <div className="rs-card-header">
             <h2>Researcher Profile</h2>
-            <p>Update your personal information and preferences.</p>
+            <p className="rs-card-desc">Update your personal information and affiliations.</p>
           </div>
 
-          <form onSubmit={saveProfile}>
-            <div className="form-row">
-              <label>
-                First Name
-                <input type="text" name="first_name" value={profile.first_name || ""} onChange={handleProfileChange} />
-              </label>
-              <label>
-                Last Name
-                <input type="text" name="last_name" value={profile.last_name || ""} onChange={handleProfileChange} />
-              </label>
+          <form className="rs-form" onSubmit={saveProfile}>
+            <div className="rs-form-row">
+              <div className="rs-form-group">
+                <label className="rs-label">First Name</label>
+                <input
+                  className="rs-input"
+                  type="text"
+                  name="first_name"
+                  value={profile.first_name || ""}
+                  onChange={handleProfileChange}
+                  placeholder="Jane"
+                />
+              </div>
+              <div className="rs-form-group">
+                <label className="rs-label">Last Name</label>
+                <input
+                  className="rs-input"
+                  type="text"
+                  name="last_name"
+                  value={profile.last_name || ""}
+                  onChange={handleProfileChange}
+                  placeholder="Doe"
+                />
+              </div>
             </div>
 
-            <label>
-              Affiliation
+            <div className="rs-form-group">
+              <label className="rs-label">Affiliation</label>
               <input
-                type="text" name="affiliation"
+                className="rs-input"
+                type="text"
+                name="affiliation"
                 value={profile.affiliation || ""}
                 onChange={handleProfileChange}
-                placeholder="University or Organization"
+                placeholder="University or Research Institute"
               />
-            </label>
+            </div>
 
-            <label>
-              Research Interests (comma separated)
+            <div className="rs-form-group">
+              <label className="rs-label">Research Interests</label>
               <textarea
+                className="rs-textarea"
                 rows="3"
                 value={profile.research_interests.join(", ")}
                 onChange={handleInterestsChange}
-                placeholder="e.g. Human-AI Interaction, Trust, Ethics"
+                placeholder="e.g. Human-AI Interaction, Ethics, Cognitive Science (comma separated)"
               />
-            </label>
+            </div>
 
-            <label>
-              OpenAI / Anthropic API Key
+            <div className="rs-form-group">
+              <label className="rs-label">OpenAI / Anthropic API Key</label>
               <input
-                type="password" name="api_key"
+                className="rs-input"
+                type="password"
+                name="api_key"
                 value={profile.api_key || ""}
                 onChange={handleProfileChange}
                 placeholder="sk-..."
               />
-            </label>
+              <small style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
+                Used for running AI simulations within your research groups.
+              </small>
+            </div>
 
-            <div className="form-group checkbox" style={{ marginTop: "1rem" }}>
-              <h3>Notification Preferences</h3>
-              <label>
+            <div className="rs-checkbox-group">
+              <label className="rs-label" style={{ marginBottom: '0.5rem' }}>Notification Preferences</label>
+              <label className="rs-checkbox-label">
                 <input
-                  type="checkbox" name="notify_email"
+                  className="rs-checkbox"
+                  type="checkbox"
+                  name="notify_email"
                   checked={profile.notification_prefs?.email || false}
                   onChange={handleProfileChange}
                 />
-                Email Notifications
+                Receive email notifications about study progress
               </label>
-              <label>
+              <label className="rs-checkbox-label">
                 <input
-                  type="checkbox" name="notify_push"
+                  className="rs-checkbox"
+                  type="checkbox"
+                  name="notify_push"
                   checked={profile.notification_prefs?.push || false}
                   onChange={handleProfileChange}
                 />
-                Browser Push Notifications
+                Receive browser push notifications
               </label>
             </div>
 
-            <button type="submit" className="submit-btn">Save Profile</button>
+            <button type="submit" className="rs-btn-primary">Save Changes</button>
           </form>
         </section>
 
         {/* Email Management */}
-        <section className="settings-section">
-          <div className="settings-header">
+        <section className="rs-card">
+          <div className="rs-card-header">
             <h2>Email Management</h2>
-            <p>Manage your connected email addresses.</p>
+            <p className="rs-card-desc">Manage connected email addresses for login and notifications.</p>
           </div>
 
-          <ul className="email-list" style={{ listStyle: "none", padding: 0, marginBottom: "1rem" }}>
+          <ul className="rs-email-list">
             {emails.map(e => (
-              <li key={e.email} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
-                <span>
+              <li key={e.email} className="rs-email-item">
+                <div className="rs-email-text">
+                  <span className="material-icons-round" style={{ fontSize: '1.2rem', color: '#64748b' }}>email</span>
                   {e.email}
-                  {e.is_primary && <span style={{ marginLeft: "0.5rem", fontSize: "0.8rem", background: "#def7ec", color: "#03543f", padding: "2px 6px", borderRadius: "4px" }}>Primary</span>}
-                </span>
-                <span style={{ fontSize: "0.9rem", color: e.is_verified ? "green" : "orange" }}>
+                  {e.is_primary && <span className="rs-badge-primary">Primary</span>}
+                </div>
+                <span className={e.is_verified ? "rs-status-verified" : "rs-status-unverified"}>
                   {e.is_verified ? "Verified" : "Unverified"}
                 </span>
               </li>
             ))}
+            {emails.length === 0 && <li className="rs-email-item" style={{ color: '#94a3b8', fontStyle: 'italic' }}>No emails found.</li>}
           </ul>
 
-          <form onSubmit={addEmail} style={{ display: "flex", gap: "1rem" }}>
+          <form onSubmit={addEmail} className="rs-add-email-row">
             <input
+              className="rs-input"
               type="email"
-              placeholder="Add new email"
+              placeholder="Add another email address"
               value={newEmail}
               onChange={e => setNewEmail(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button type="submit" className="manage-btn">Add</button>
+            <button type="submit" className="rs-btn-add">Add Email</button>
           </form>
         </section>
 

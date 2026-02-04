@@ -1,0 +1,261 @@
+.rc-layout {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+    background: #f8fafc;
+    min-height: calc(100vh - 80px);
+    /* Adjust based on topbar height */
+    padding-bottom: 100px;
+    /* Space for sticky footer */
+}
+
+.rc-main {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.rc-sidebar {
+    flex: 1;
+    min-width: 300px;
+}
+
+.rc-header {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.rc-subtitle {
+    color: #64748b;
+    margin-bottom: 2rem;
+}
+
+/* Sections */
+.rc-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid #e2e8f0;
+}
+
+.rc-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.rc-section-icon {
+    color: #0ea5e9;
+    font-size: 1.2rem;
+}
+
+/* Form Elements */
+.rc-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.rc-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+}
+
+.rc-input,
+.rc-select,
+.rc-textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #334155;
+    background: white;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.rc-input:focus,
+.rc-select:focus,
+.rc-textarea:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+}
+
+.rc-textarea {
+    resize: vertical;
+}
+
+/* Upload Area */
+.rc-upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+
+.rc-upload-area:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.rc-upload-icon {
+    font-size: 2rem;
+    color: #94a3b8;
+    margin-bottom: 0.5rem;
+}
+
+/* Checkbox Cards for AI Features */
+.rc-ai-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.rc-checkbox-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rc-checkbox-card:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.rc-checkbox-card.selected {
+    border-color: #0ea5e9;
+    background: #f0f9ff;
+}
+
+.rc-checkbox {
+    margin-top: 3px;
+    width: 18px;
+    height: 18px;
+    accent-color: #0ea5e9;
+}
+
+/* Summary Card */
+.rc-summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    position: sticky;
+    top: 2rem;
+}
+
+.rc-summary-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 1rem;
+}
+
+.rc-summary-item {
+    margin-bottom: 1.25rem;
+}
+
+.rc-summary-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.rc-summary-value {
+    font-size: 0.95rem;
+    color: #334155;
+    font-style: italic;
+}
+
+.rc-summary-value.filled {
+    color: #0f172a;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.rc-summary-warning {
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Sticky Footer */
+.rc-footer {
+    position: fixed;
+    bottom: 0;
+    left: 260px;
+    /* Sidebar width */
+    right: 0;
+    background: white;
+    padding: 1rem 2rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.rc-btn-secondary {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 1rem;
+}
+
+.rc-btn-primary {
+    background: #06b6d4;
+    /* Teal-ish color from image */
+    color: white;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(6, 182, 212, 0.3);
+}
+
+.feature-tag {
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    color: #475569;
+}
