@@ -1,18 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
+import "./Notifications.css";
 
-export default function Notifications() {
+const SOCKET_URL = "http://localhost:5000";
+
+export default function Notifications({ onOpenProject }) {
     const [notifications, setNotifications] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
+    const socketRef = useRef(null);
+    const dropdownRef = useRef(null);
+    const token = localStorage.getItem("token");
+
+    // Decode user id from token
+    const userId = (() => {
+        try {
+            return JSON.parse(atob(token.split(".")[1])).id;
+        } catch { return null; }
+    })();
 
     useEffect(() => {
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 10000); // Poll every 10s
-        return () => clearInterval(interval);
-    }, []);
+
+        // Connect socket and join user room for real-time notifications
+        if (userId) {
+            socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+            socketRef.current.emit("join_user", userId);
+
+            socketRef.current.on("notification", (notif) => {
+                setNotifications(prev => [notif, ...prev]);
+            });
+        }
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
+    }, [userId]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        }
+        if (showDropdown) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showDropdown]);
 
     async function fetchNotifications() {
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch("http://localhost:5000/notifications", {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -20,45 +58,108 @@ export default function Notifications() {
         } catch (e) { console.error(e); }
     }
 
+    async function markAsRead(id) {
+        try {
+            await fetch(`http://localhost:5000/notifications/${id}/read`, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNotifications(prev =>
+                prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+            );
+        } catch (e) { console.error(e); }
+    }
+
+    async function markAllRead() {
+        const unread = notifications.filter(n => !n.is_read);
+        for (const n of unread) {
+            await markAsRead(n.id);
+        }
+    }
+
+    function handleNotificationClick(n) {
+        // Mark as read
+        if (!n.is_read) markAsRead(n.id);
+
+        // If notification has a game_id in metadata, open the modal
+        const gameId = n.metadata?.game_id;
+        if (gameId && onOpenProject) {
+            onOpenProject(gameId);
+            setShowDropdown(false);
+        }
+    }
+
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
+    function getIcon(type) {
+        switch (type) {
+            case "message": return "chat";
+            case "approval": return "check_circle";
+            default: return "info";
+        }
+    }
+
+    function getTimeAgo(dateStr) {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return "just now";
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        return `${days}d ago`;
+    }
+
     return (
-        <div className="notifications-wrapper" style={{ position: 'relative' }}>
+        <div className="notif-wrapper" ref={dropdownRef}>
             <button
-                className="icon-btn"
+                className={`notif-bell ${unreadCount > 0 ? "has-unread" : ""}`}
                 onClick={() => setShowDropdown(!showDropdown)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
             >
-                <span className="material-icons-round" style={{ fontSize: '24px' }}>notifications</span>
+                <span className="material-icons-round">notifications</span>
                 {unreadCount > 0 && (
-                    <span className="notification-badge" style={{
-                        position: 'absolute', top: -5, right: -5,
-                        background: 'red', color: 'white', borderRadius: '50%',
-                        width: '18px', height: '18px', fontSize: '12px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        {unreadCount}
-                    </span>
+                    <span className="notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
                 )}
             </button>
 
             {showDropdown && (
-                <div className="notifications-dropdown" style={{
-                    position: 'absolute', top: '100%', right: 0,
-                    background: 'white', border: '1px solid #ccc', borderRadius: '8px',
-                    width: '300px', maxHeight: '400px', overflowY: 'auto',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000,
-                    marginTop: '10px'
-                }}>
-                    <div style={{ padding: '10px', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Notifications</div>
-                    {notifications.length === 0 ? <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No notifications</div> : (
-                        notifications.map(n => (
-                            <div key={n.id} style={{ padding: '10px', borderBottom: '1px solid #eee', background: n.is_read ? 'white' : '#f0f9ff' }}>
-                                <p style={{ margin: 0, fontSize: '14px' }}>{n.message}</p>
-                                <small style={{ color: '#888', fontSize: '11px' }}>{new Date(n.created_at).toLocaleDateString()}</small>
+                <div className="notif-dropdown">
+                    <div className="notif-dropdown-header">
+                        <strong>Notifications</strong>
+                        {unreadCount > 0 && (
+                            <button className="notif-mark-all" onClick={markAllRead}>
+                                Mark all read
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="notif-list">
+                        {notifications.length === 0 ? (
+                            <div className="notif-empty">
+                                <span className="material-icons-round" style={{ fontSize: "2rem", color: "#cbd5e1" }}>
+                                    notifications_none
+                                </span>
+                                <p>No notifications yet</p>
                             </div>
-                        ))
-                    )}
+                        ) : (
+                            notifications.map(n => (
+                                <div
+                                    key={n.id}
+                                    className={`notif-item ${n.is_read ? "" : "unread"}`}
+                                    onClick={() => handleNotificationClick(n)}
+                                >
+                                    <div className={`notif-icon ${n.type || "info"}`}>
+                                        <span className="material-icons-round">{getIcon(n.type)}</span>
+                                    </div>
+                                    <div className="notif-body">
+                                        <p className="notif-msg">{n.message}</p>
+                                        <small className="notif-time">{getTimeAgo(n.created_at)}</small>
+                                    </div>
+                                    {!n.is_read && <div className="notif-dot" />}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>

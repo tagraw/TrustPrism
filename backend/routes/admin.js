@@ -248,10 +248,14 @@ router.get("/games", async (req, res) => {
                 g.status,
                 g.irb_approval,
                 g.target_sample_size,
+                g.consent_form_url,
+                g.experimental_conditions,
+                g.group_id,
                 g.created_at,
                 g.updated_at,
                 u.first_name || ' ' || u.last_name as researcher_name,
-                u.email as researcher_email
+                u.email as researcher_email,
+                g.researcher_id
             FROM games g
             JOIN users u ON g.researcher_id = u.id
             ORDER BY g.created_at DESC
@@ -263,4 +267,50 @@ router.get("/games", async (req, res) => {
     }
 });
 
+/**
+ * PUT /api/admin/games/:id/status
+ * Update game status (approve, send back to draft, etc.)
+ */
+router.put("/games/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ["draft", "pending_review", "approved", "published", "archived"];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+    }
+
+    try {
+        await pool.query("UPDATE games SET status = $1, updated_at = NOW() WHERE id = $2", [status, id]);
+
+        // Notify the researcher about the status change
+        const gameRes = await pool.query("SELECT name, researcher_id FROM games WHERE id = $1", [id]);
+        if (gameRes.rowCount > 0) {
+            const game = gameRes.rows[0];
+            const notifMsg = status === "approved"
+                ? `Your study "${game.name}" has been approved!`
+                : `Your study "${game.name}" status changed to: ${status}`;
+
+            await pool.query(
+                `INSERT INTO notifications (user_id, type, message, metadata)
+                 VALUES ($1, 'approval', $2, $3)`,
+                [game.researcher_id, notifMsg, JSON.stringify({ game_id: id, status })]
+            );
+
+            // Emit real-time notification
+            req.io.to(`user_${game.researcher_id}`).emit("notification", {
+                type: "approval",
+                message: notifMsg,
+                metadata: { game_id: id, status }
+            });
+        }
+
+        res.json({ message: "Game status updated successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error updating game status" });
+    }
+});
+
 export default router;
+

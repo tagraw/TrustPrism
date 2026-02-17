@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import LogoutButton from "../components/LogoutButton";
+import Notifications from "../components/Notifications";
 import UserManagement from "./views/User_Management";
 import GroupManagement from "./views/Group_Management";
+import StudyApprovals from "./views/Study_Approvals";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Admin.css";
 
 export default function Admin() {
   const [activeView, setActiveView] = useState("overview");
+  const [notificationGameId, setNotificationGameId] = useState(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeResearchers: 0,
@@ -124,11 +127,15 @@ export default function Admin() {
           <h1>
             {activeView === 'users' ? 'User Management' :
               activeView === 'groups' ? 'Group Management' :
-                'System Dashboard'}
+                activeView === 'approvals' ? 'Study Approvals' :
+                  'System Dashboard'}
           </h1>
 
           <div className="topbar-actions">
-            <span className="material-icons-round bell">notifications</span>
+            <Notifications onOpenProject={(gameId) => {
+              setNotificationGameId(gameId);
+              setActiveView("approvals");
+            }} />
           </div>
         </header>
 
@@ -137,6 +144,8 @@ export default function Admin() {
           <UserManagement />
         ) : activeView === 'groups' ? (
           <GroupManagement />
+        ) : activeView === 'approvals' ? (
+          <StudyApprovals openGameId={notificationGameId} onGameOpened={() => setNotificationGameId(null)} />
         ) : (
           <>
             {/* Stats */}

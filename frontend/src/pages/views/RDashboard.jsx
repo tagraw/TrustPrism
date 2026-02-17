@@ -48,7 +48,19 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
         </div>
         <div className="rd-actions">
           <input className="rd-search" placeholder="Search studies..." />
-          <Notifications />
+          <Notifications onOpenProject={async (gameId) => {
+            try {
+              const token = localStorage.getItem("token");
+              const res = await fetch(`http://localhost:5000/dashboard/stats`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const project = data.projects?.find(p => p.id === gameId);
+                if (project) onViewProject(project);
+              }
+            } catch (e) { console.error(e); }
+          }} />
           <button className="rd-create" onClick={() => setActiveView("create")}>
             + Create New Game
           </button>
