@@ -19,6 +19,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import insightsRoutes from "./routes/insights.js";
 import chatRoutes from "./routes/chat.js";
 import notificationRoutes from "./routes/notifications.js";
+import adminRoutes from "./routes/admin.js";
 console.log("✅ .env loaded:", {
   DB_HOST: process.env.DB_HOST,
   DB_NAME: process.env.DB_NAME,
@@ -35,10 +36,18 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // allow all for dev
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], // Explicitly allow frontend origin
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
   }
 });
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 
 // Attach io to req for usage in routes
 app.use((req, res, next) => {
@@ -85,6 +94,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/insights", insightsRoutes);
 app.use("/chat", chatRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/admin", adminRoutes);
 
 // Catch-all unmatched route
 app.use((req, res) => {

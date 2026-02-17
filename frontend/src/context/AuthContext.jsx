@@ -21,10 +21,12 @@ export const AuthProvider = ({ children }) => {
         }
     }, [auth]);
 
+    console.log("AuthContext State:", auth); // DEBUG
+
     const logout = () => setAuth({});
 
     return (
-        <AuthContext.Provider value={{ auth, setAuth, logout }}>
+        <AuthContext.Provider value={{ auth, setAuth }}>
             {children}
         </AuthContext.Provider>
     );

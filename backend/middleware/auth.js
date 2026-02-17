@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 console.log("🔥 auth middleware loaded");
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 

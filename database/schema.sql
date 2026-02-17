@@ -18,13 +18,15 @@ CREATE TABLE IF NOT EXISTS users (
   verification_token TEXT,
   reset_token TEXT,
   reset_token_expires TIMESTAMP,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'disabled')), -- Added for user management
   created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- RESEARCHER PROFILES (role-specific)
 CREATE TABLE IF NOT EXISTS researchers (
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  verified BOOLEAN DEFAULT FALSE
+  verified BOOLEAN DEFAULT FALSE,
+  access_scopes JSONB DEFAULT '{}' -- Added for granular access control
 );
 
 -- ADMIN (role-specific)
