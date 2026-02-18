@@ -253,6 +253,8 @@ router.get("/games", async (req, res) => {
                 g.consent_form_url,
                 g.experimental_conditions,
                 g.group_id,
+                g.staging_url,
+                g.production_url,
                 g.created_at,
                 g.updated_at,
                 u.first_name || ' ' || u.last_name as researcher_name,

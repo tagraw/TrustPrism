@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
+import "../Researcher.css";
 
 export default function RProjectDetails({ projectId, goBack }) {
     const [project, setProject] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
+    const [stagingUrl, setStagingUrl] = useState("");
+    const [savingStagingUrl, setSavingStagingUrl] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
 
     // Poll for messages every 5s for MVP
     useEffect(() => {
@@ -20,7 +24,11 @@ export default function RProjectDetails({ projectId, goBack }) {
             const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) setProject(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                setProject(data);
+                setStagingUrl(data.staging_url || "");
+            }
         } catch (e) { console.error(e); }
     }
 
@@ -72,6 +80,27 @@ export default function RProjectDetails({ projectId, goBack }) {
         }
     }
 
+    async function saveStagingUrl() {
+        if (!stagingUrl.trim()) return;
+        setSavingStagingUrl(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ staging_url: stagingUrl.trim() })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setProject(updated);
+            }
+        } catch (err) { console.error(err); }
+        setSavingStagingUrl(false);
+    }
+
     if (loading) return <div className="p-8">Loading project...</div>;
     if (!project) return <div className="p-8">Project not found</div>;
 
@@ -89,6 +118,64 @@ export default function RProjectDetails({ projectId, goBack }) {
                     <p><strong>Type:</strong> {project.game_type}</p>
                     <p><strong>Description:</strong> {project.description}</p>
 
+                    {/* Staging URL */}
+                    <div className="staging-section" style={{ marginTop: '1.5rem' }}>
+                        <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span className="material-icons-round" style={{ fontSize: '18px' }}>language</span>
+                            Staging URL
+                        </h3>
+                        <div className="staging-url-row">
+                            <input
+                                type="url"
+                                className="staging-url-input"
+                                value={stagingUrl}
+                                onChange={e => setStagingUrl(e.target.value)}
+                                placeholder="https://staging.your-game.example.com"
+                            />
+                            <button
+                                className="staging-save-btn"
+                                onClick={saveStagingUrl}
+                                disabled={savingStagingUrl || !stagingUrl.trim() || stagingUrl.trim() === project.staging_url}
+                            >
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                    {savingStagingUrl ? "hourglass_empty" : "save"}
+                                </span>
+                                {savingStagingUrl ? "Saving..." : "Save"}
+                            </button>
+                        </div>
+
+                        {(stagingUrl.trim() || project.staging_url) && (
+                            <button
+                                className={`preview-toggle-btn ${showPreview ? "active" : ""}`}
+                                onClick={() => setShowPreview(!showPreview)}
+                            >
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                    {showPreview ? "visibility_off" : "visibility"}
+                                </span>
+                                {showPreview ? "Hide Preview" : "Preview Game"}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Iframe Preview */}
+                    {showPreview && (stagingUrl.trim() || project.staging_url) && (
+                        <div className="preview-iframe-container" style={{ marginTop: '1rem' }}>
+                            <div className="preview-iframe-header">
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>monitor</span>
+                                <span>Live Preview</span>
+                                <a href={stagingUrl.trim() || project.staging_url} target="_blank" rel="noreferrer" className="preview-open-external">
+                                    <span className="material-icons-round" style={{ fontSize: '14px' }}>open_in_new</span>
+                                </a>
+                            </div>
+                            <iframe
+                                src={stagingUrl.trim() || project.staging_url}
+                                title={`Preview: ${project.name}`}
+                                className="preview-iframe"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                            />
+                        </div>
+                    )}
+
                     <div className="actions-bar" style={{ marginTop: "20px" }}>
                         {project.status === 'draft' && (
                             <button className="create-btn" onClick={() => updateStatus('pending_review')}>
@@ -98,8 +185,13 @@ export default function RProjectDetails({ projectId, goBack }) {
                         {project.status === 'pending_review' && (
                             <div className="review-status">
                                 <p>Waiting for Admin Review...</p>
-                                <button className="manage-btn">Preview Game</button>
                             </div>
+                        )}
+                        {project.status === 'approved' && (
+                            <button className="publish-btn" onClick={() => updateStatus('published')}>
+                                <span className="material-icons-round">rocket_launch</span>
+                                Publish Game
+                            </button>
                         )}
                         {project.status === 'published' && (
                             <button className="manage-btn">View Insights</button>

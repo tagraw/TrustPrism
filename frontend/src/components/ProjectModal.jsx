@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import "./ProjectModal.css";
+import "../pages/Admin.css";
 
 const SOCKET_URL = "http://localhost:5000";
 
 export default function ProjectModal({ project, onClose, onViewInsights }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
-    const [activeTab, setActiveTab] = useState("consent"); // consent, logic, description
+    const [activeTab, setActiveTab] = useState("consent"); // consent, logic, description, preview
+    const [stagingUrl, setStagingUrl] = useState(project?.staging_url || "");
+    const [savingStagingUrl, setSavingStagingUrl] = useState(false);
     const socketRef = useRef(null);
     const token = localStorage.getItem("token");
 
@@ -78,6 +81,44 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
 
     const status = project.status || 'draft';
     const isPublished = status === 'published';
+    const isApproved = status === 'approved';
+
+    async function saveStagingUrl() {
+        if (!stagingUrl.trim()) return;
+        setSavingStagingUrl(true);
+        try {
+            const res = await fetch(`http://localhost:5000/projects/${project.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ staging_url: stagingUrl.trim() })
+            });
+            if (res.ok) {
+                project.staging_url = stagingUrl.trim();
+            }
+        } catch (err) { console.error(err); }
+        setSavingStagingUrl(false);
+    }
+
+    async function handlePublish() {
+        if (!confirm("Publish this game? It will become visible in Live Games.")) return;
+        try {
+            const res = await fetch(`http://localhost:5000/projects/${project.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: "published" })
+            });
+            if (res.ok) {
+                alert("Game published!");
+                onClose();
+            }
+        } catch (err) { console.error(err); }
+    }
 
 
     return (
@@ -99,12 +140,24 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                     </div>
 
                     <div className="pm-header-actions">
-                        <button className="pm-btn-preview">
-                            <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>visibility</span>
-                            Preview Game
+                        <button
+                            className={`pm-btn-preview ${activeTab === 'preview' ? 'active' : ''}`}
+                            onClick={() => setActiveTab(activeTab === 'preview' ? 'consent' : 'preview')}
+                        >
+                            <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>
+                                {activeTab === 'preview' ? 'visibility_off' : 'visibility'}
+                            </span>
+                            {activeTab === 'preview' ? 'Hide Preview' : 'Preview Game'}
                         </button>
 
-                        {!isPublished && (
+                        {isApproved && (
+                            <button className="pm-btn-approve" onClick={handlePublish}>
+                                <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>rocket_launch</span>
+                                Publish Game
+                            </button>
+                        )}
+
+                        {!isPublished && !isApproved && (
                             <>
                                 <button className="pm-btn-request">
                                     <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>notes</span>
@@ -193,6 +246,58 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                     <div className="pm-doc-card">
                                         <p>{project.description || "No description provided."}</p>
                                         <p><strong>Game Type:</strong> {project.game_type}</p>
+                                    </div>
+                                </>
+                            )}
+
+                            {activeTab === 'preview' && (
+                                <>
+                                    <div className="pm-doc-title">
+                                        <span className="material-icons-round" style={{ color: '#64748b' }}>language</span>
+                                        <strong>Game Preview</strong>
+                                    </div>
+                                    <div className="pm-doc-card">
+                                        <div className="staging-url-row" style={{ marginBottom: '12px' }}>
+                                            <input
+                                                type="url"
+                                                className="staging-url-input"
+                                                value={stagingUrl}
+                                                onChange={e => setStagingUrl(e.target.value)}
+                                                placeholder="https://staging.your-game.example.com"
+                                            />
+                                            <button
+                                                className="staging-save-btn"
+                                                onClick={saveStagingUrl}
+                                                disabled={savingStagingUrl || !stagingUrl.trim() || stagingUrl.trim() === project.staging_url}
+                                            >
+                                                <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                                    {savingStagingUrl ? "hourglass_empty" : "save"}
+                                                </span>
+                                                {savingStagingUrl ? "Saving..." : "Save"}
+                                            </button>
+                                        </div>
+
+                                        {(stagingUrl.trim() || project.staging_url) ? (
+                                            <div className="preview-iframe-container">
+                                                <div className="preview-iframe-header">
+                                                    <span className="material-icons-round" style={{ fontSize: '16px' }}>monitor</span>
+                                                    <span>Live Preview</span>
+                                                    <a href={stagingUrl.trim() || project.staging_url} target="_blank" rel="noreferrer" className="preview-open-external">
+                                                        <span className="material-icons-round" style={{ fontSize: '14px' }}>open_in_new</span>
+                                                    </a>
+                                                </div>
+                                                <iframe
+                                                    src={stagingUrl.trim() || project.staging_url}
+                                                    title={`Preview: ${project.name}`}
+                                                    className="preview-iframe"
+                                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <p style={{ color: '#94a3b8', textAlign: 'center', marginTop: '2rem' }}>
+                                                Enter a staging URL above and click Save to preview the game.
+                                            </p>
+                                        )}
                                     </div>
                                 </>
                             )}
