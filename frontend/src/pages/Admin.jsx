@@ -4,6 +4,9 @@ import Notifications from "../components/Notifications";
 import UserManagement from "./views/User_Management";
 import GroupManagement from "./views/Group_Management";
 import StudyApprovals from "./views/Study_Approvals";
+import AuditMonitor from "./views/AuditMonitor";
+import SDKDocs from "./views/SDKDocs";
+import SecuritySettings from "./views/SecuritySettings";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Admin.css";
 
@@ -100,11 +103,18 @@ export default function Admin() {
             Study Approvals
           </a>
           <a
-            className={activeView === "reports" ? "active" : ""}
-            onClick={() => setActiveView("reports")}
+            className={activeView === "audit" ? "active" : ""}
+            onClick={() => setActiveView("audit")}
           >
-            <span className="material-icons-round">description</span>
-            Reports
+            <span className="material-icons-round">shield</span>
+            Audit & Monitoring
+          </a>
+          <a
+            className={activeView === "sdk" ? "active" : ""}
+            onClick={() => setActiveView("sdk")}
+          >
+            <span className="material-icons-round">code</span>
+            SDK Docs
           </a>
           <a
             className={activeView === "settings" ? "active" : ""}
@@ -128,7 +138,10 @@ export default function Admin() {
             {activeView === 'users' ? 'User Management' :
               activeView === 'groups' ? 'Group Management' :
                 activeView === 'approvals' ? 'Study Approvals' :
-                  'System Dashboard'}
+                  activeView === 'audit' ? 'Audit & Monitoring' :
+                    activeView === 'sdk' ? 'SDK Documentation' :
+                      activeView === 'settings' ? 'Security Settings' :
+                        'System Dashboard'}
           </h1>
 
           <div className="topbar-actions">
@@ -146,6 +159,12 @@ export default function Admin() {
           <GroupManagement />
         ) : activeView === 'approvals' ? (
           <StudyApprovals openGameId={notificationGameId} onGameOpened={() => setNotificationGameId(null)} />
+        ) : activeView === 'audit' ? (
+          <AuditMonitor />
+        ) : activeView === 'sdk' ? (
+          <SDKDocs />
+        ) : activeView === 'settings' ? (
+          <SecuritySettings />
         ) : (
           <>
             {/* Stats */}

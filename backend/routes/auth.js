@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { sendVerificationEmail } from "../util/email.js";
 import { sendPasswordResetEmail } from "../util/email.js";
 import { body, validationResult } from "express-validator";
+import { validatePassword, checkLockout, recordLoginAttempt, getSettings } from "../util/settings.js";
 
 const router = express.Router();
 
@@ -57,6 +58,12 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
         error: "You must be at least 13 years old to register",
       });
     }
+  }
+
+  // Password policy validation from security settings
+  const pwCheck = await validatePassword(password);
+  if (!pwCheck.valid) {
+    return res.status(400).json({ error: pwCheck.errors.join(". ") });
   }
 
   try {
@@ -178,13 +185,24 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Check lockout before anything else
+    const lockout = await checkLockout(email);
+    if (lockout.locked) {
+      return res.status(429).json({
+        error: `Account temporarily locked due to too many failed attempts. Try again in ${lockout.remainingMinutes} minutes.`
+      });
+    }
+
     const result = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
     );
 
     const user = result.rows[0];
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) {
+      await recordLoginAttempt(email, req.ip, false);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
     if (!user.is_verified) {
       return res.status(403).json({
@@ -193,12 +211,22 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+    if (!valid) {
+      await recordLoginAttempt(email, req.ip, false);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Successful login — record it and clear lockout concern
+    await recordLoginAttempt(email, req.ip, true);
+
+    // Use session timeout from security settings
+    const settings = await getSettings();
+    const expiresIn = `${settings.sessionTimeout}m`;
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn }
     );
 
     res.json({ token, role: user.role });

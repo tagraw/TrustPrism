@@ -11,6 +11,10 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
     const [activeTab, setActiveTab] = useState("overview"); // overview, consent, logic, description, preview
     const [stagingUrl, setStagingUrl] = useState(project?.staging_url || "");
     const [savingStagingUrl, setSavingStagingUrl] = useState(false);
+    const [exportDateFrom, setExportDateFrom] = useState("");
+    const [exportDateTo, setExportDateTo] = useState("");
+    const [exportCompletedOnly, setExportCompletedOnly] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const socketRef = useRef(null);
     const token = localStorage.getItem("token");
 
@@ -190,6 +194,11 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                             <button className={`pm-tab ${activeTab === 'description' ? 'active' : ''}`} onClick={() => setActiveTab('description')}>
                                 Study Details
                             </button>
+                            {status === 'published' && (
+                                <button className={`pm-tab ${activeTab === 'export' ? 'active' : ''}`} onClick={() => setActiveTab('export')}>
+                                    Export Data
+                                </button>
+                            )}
                         </div>
 
                         <div className="pm-content-view">
@@ -415,6 +424,125 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                             </p>
                                         )}
                                     </div>
+                                </>
+                            )}
+
+                            {/* ── Export Data Tab ── */}
+                            {activeTab === 'export' && (
+                                <>
+                                    <div className="pm-doc-title">
+                                        <span className="material-icons-round" style={{ color: '#64748b' }}>download</span>
+                                        <strong>Export Anonymized Data</strong>
+                                    </div>
+
+                                    <div className="pm-doc-card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: '1rem' }}>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                            <span className="material-icons-round" style={{ color: '#16a34a', fontSize: '20px', marginTop: '2px' }}>verified_user</span>
+                                            <div>
+                                                <strong style={{ color: '#166534' }}>Privacy-Safe Export</strong>
+                                                <p style={{ margin: '4px 0 0 0', color: '#15803d', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                                                    All participant IDs are hashed with SHA-256. No names, emails, or IP addresses are included.
+                                                    Data is ready for statistical modeling, machine learning, or academic publication.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pm-doc-card">
+                                        <h4 style={{ margin: '0 0 1rem 0', color: '#0f172a' }}>Filter Options</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Date From</label>
+                                                <input
+                                                    type="date"
+                                                    value={exportDateFrom}
+                                                    onChange={e => setExportDateFrom(e.target.value)}
+                                                    style={{
+                                                        width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
+                                                        borderRadius: '6px', fontSize: '0.9rem', color: '#334155'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Date To</label>
+                                                <input
+                                                    type="date"
+                                                    value={exportDateTo}
+                                                    onChange={e => setExportDateTo(e.target.value)}
+                                                    style={{
+                                                        width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
+                                                        borderRadius: '6px', fontSize: '0.9rem', color: '#334155'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: '1rem' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={exportCompletedOnly}
+                                                    onChange={e => setExportCompletedOnly(e.target.checked)}
+                                                    style={{ width: '16px', height: '16px', accentColor: '#0ea5e9' }}
+                                                />
+                                                Only completed sessions
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="pm-doc-card" style={{ marginTop: '1rem' }}>
+                                        <h4 style={{ margin: '0 0 0.75rem 0', color: '#0f172a' }}>CSV Columns</h4>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {['hashed_user_id', 'session_id', 'started_at', 'ended_at', 'duration_seconds', 'score', 'completion_status', 'event_count', 'ai_event_count', 'ai_model', 'avg_latency_ms'].map(col => (
+                                                <span key={col} style={{
+                                                    padding: '3px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0',
+                                                    borderRadius: '4px', fontSize: '0.75rem', fontFamily: 'monospace', color: '#475569'
+                                                }}>{col}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={async () => {
+                                            setExporting(true);
+                                            try {
+                                                const params = new URLSearchParams();
+                                                if (exportDateFrom) params.set('date_from', exportDateFrom);
+                                                if (exportDateTo) params.set('date_to', exportDateTo);
+                                                if (exportCompletedOnly) params.set('min_completion', '100');
+                                                const res = await fetch(
+                                                    `http://localhost:5000/projects/${project.id}/export?${params}`,
+                                                    { headers: { Authorization: `Bearer ${token}` } }
+                                                );
+                                                if (!res.ok) {
+                                                    const err = await res.json();
+                                                    alert(err.error || 'Export failed');
+                                                    return;
+                                                }
+                                                const blob = await res.blob();
+                                                const url = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'export.csv';
+                                                a.click();
+                                                URL.revokeObjectURL(url);
+                                            } catch (err) { console.error(err); alert('Export failed'); }
+                                            setExporting(false);
+                                        }}
+                                        disabled={exporting}
+                                        style={{
+                                            marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px',
+                                            padding: '12px 24px', background: '#0ea5e9', color: 'white', border: 'none',
+                                            borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: 'pointer',
+                                            width: '100%', justifyContent: 'center',
+                                            opacity: exporting ? 0.7 : 1
+                                        }}
+                                    >
+                                        <span className="material-icons-round" style={{ fontSize: '20px' }}>
+                                            {exporting ? 'hourglass_empty' : 'file_download'}
+                                        </span>
+                                        {exporting ? 'Exporting...' : 'Download Anonymized CSV'}
+                                    </button>
                                 </>
                             )}
                         </div>

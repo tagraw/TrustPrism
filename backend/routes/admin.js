@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { getSettings, updateSettings } from "../util/settings.js";
 
 const router = express.Router();
 
@@ -423,5 +424,200 @@ router.get("/games/:id/api-keys", async (req, res) => {
     }
 });
 
-export default router;
+/**
+ * GET /admin/audit
+ * Return AI interaction logs + usage anomalies for admin monitoring.
+ * Detects usage spikes: sessions with > threshold events.
+ */
+router.get("/audit", async (req, res) => {
+    const SPIKE_THRESHOLD = 20; // events per session considered abnormal
+    try {
+        // 1. Recent AI interaction logs (last 500)
+        const logsRes = await pool.query(`
+            SELECT
+                ail.id,
+                ail.game_id,
+                g.name AS game_name,
+                ail.session_id,
+                ail.event_type,
+                ail.ai_model,
+                ail.payload,
+                ail.prompt_tokens,
+                ail.completion_tokens,
+                ail.latency_ms,
+                ail.flagged,
+                ail.flag_reason,
+                ail.created_at,
+                g.status AS game_status,
+                g.researcher_id
+            FROM ai_interaction_logs ail
+            JOIN games g ON ail.game_id = g.id
+            ORDER BY ail.created_at DESC
+            LIMIT 500
+        `);
 
+        // 2. Usage spikes: sessions with unusually high event counts
+        const spikesRes = await pool.query(`
+            SELECT
+                ail.session_id,
+                ail.game_id,
+                g.name AS game_name,
+                COUNT(*)::int AS event_count,
+                MAX(ail.created_at) AS last_event,
+                SUM(ail.prompt_tokens)::int AS total_prompt_tokens,
+                SUM(ail.completion_tokens)::int AS total_completion_tokens
+            FROM ai_interaction_logs ail
+            JOIN games g ON ail.game_id = g.id
+            GROUP BY ail.session_id, ail.game_id, g.name
+            HAVING COUNT(*) > $1
+            ORDER BY COUNT(*) DESC
+            LIMIT 50
+        `, [SPIKE_THRESHOLD]);
+
+        // 3. Flagged logs
+        const flaggedRes = await pool.query(`
+            SELECT
+                ail.id,
+                ail.game_id,
+                g.name AS game_name,
+                ail.session_id,
+                ail.event_type,
+                ail.ai_model,
+                ail.payload,
+                ail.flag_reason,
+                ail.created_at
+            FROM ai_interaction_logs ail
+            JOIN games g ON ail.game_id = g.id
+            WHERE ail.flagged = TRUE
+            ORDER BY ail.created_at DESC
+            LIMIT 100
+        `);
+
+        res.json({
+            logs: logsRes.rows,
+            spikes: spikesRes.rows,
+            flagged: flaggedRes.rows,
+            spike_threshold: SPIKE_THRESHOLD
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch audit data" });
+    }
+});
+
+/**
+ * PUT /admin/ai-logs/:id/flag
+ * Flag or unflag a suspicious AI interaction log.
+ * Body: { flagged: boolean, flag_reason?: string }
+ */
+router.put("/ai-logs/:id/flag", async (req, res) => {
+    const { id } = req.params;
+    const { flagged, flag_reason } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE ai_interaction_logs
+             SET flagged = $1, flag_reason = $2
+             WHERE id = $3
+             RETURNING id, flagged, flag_reason`,
+            [flagged !== false, flag_reason || null, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: "Log not found" });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update flag" });
+    }
+});
+
+/**
+ * PUT /admin/games/:id/disable
+ * Disable a game (sets status to 'disabled').
+ */
+router.put("/games/:id/disable", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query(
+            `UPDATE games SET status = 'disabled', updated_at = NOW()
+             WHERE id = $1 RETURNING id, name, status`,
+            [id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: "Game not found" });
+
+        // Also revoke all active API keys for this game
+        await pool.query(
+            `UPDATE api_keys SET is_active = FALSE, revoked_at = NOW()
+             WHERE game_id = $1 AND is_active = TRUE`,
+            [id]
+        );
+
+        // Notify researcher
+        const game = result.rows[0];
+        const gameInfo = await pool.query("SELECT researcher_id FROM games WHERE id = $1", [id]);
+        if (gameInfo.rows[0]) {
+            const notifMsg = `Your game "${game.name}" has been disabled by an administrator.`;
+            await pool.query(
+                `INSERT INTO notifications (user_id, type, message, metadata)
+                 VALUES ($1, 'system', $2, $3)`,
+                [gameInfo.rows[0].researcher_id, notifMsg, JSON.stringify({ game_id: id })]
+            );
+        }
+
+        res.json({ message: "Game disabled and API keys revoked", game: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to disable game" });
+    }
+});
+
+/**
+ * DELETE /admin/api-keys/:id
+ * Revoke a specific API key by ID.
+ */
+router.delete("/api-keys/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query(
+            `UPDATE api_keys SET is_active = FALSE, revoked_at = NOW()
+             WHERE id = $1 AND is_active = TRUE
+             RETURNING id, key_prefix, game_id`,
+            [id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: "API key not found or already revoked" });
+        res.json({ message: "API key revoked", key: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to revoke API key" });
+    }
+});
+
+/**
+ * GET /admin/settings
+ * Return current security settings.
+ */
+router.get("/settings", async (req, res) => {
+    try {
+        const settings = await getSettings();
+        res.json(settings);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to load settings" });
+    }
+});
+
+/**
+ * PUT /admin/settings
+ * Update security settings (partial merge).
+ * Body: { sessionTimeout?: number, passwordMinLength?: number, ... }
+ */
+router.put("/settings", async (req, res) => {
+    try {
+        const updated = await updateSettings(req.body, req.user.id);
+        res.json({ message: "Settings updated", settings: updated });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update settings" });
+    }
+});
+
+export default router;
