@@ -20,6 +20,8 @@ import insightsRoutes from "./routes/insights.js";
 import chatRoutes from "./routes/chat.js";
 import notificationRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
+import telemetryRoutes from "./routes/telemetry.js";
+import aiProxyRoutes from "./routes/aiProxy.js";
 console.log("✅ .env loaded:", {
   DB_HOST: process.env.DB_HOST,
   DB_NAME: process.env.DB_NAME,
@@ -95,6 +97,8 @@ app.use("/insights", insightsRoutes);
 app.use("/chat", chatRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/admin", adminRoutes);
+app.use("/api/telemetry", telemetryRoutes);
+app.use("/api/ai", aiProxyRoutes);
 
 // Catch-all unmatched route
 app.use((req, res) => {

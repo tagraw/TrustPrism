@@ -79,6 +79,13 @@ CREATE TABLE IF NOT EXISTS games (
   consent_form_url TEXT,
   target_sample_size INTEGER,
   irb_approval BOOLEAN DEFAULT FALSE,
+  category TEXT,
+  age_group TEXT,
+  research_tags TEXT[],
+  ai_usage_type TEXT DEFAULT 'none'
+    CHECK (ai_usage_type IN ('none', 'assistive', 'adversarial', 'adaptive', 'generative')),
+  staging_url TEXT,
+  production_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
 
@@ -87,6 +94,26 @@ CREATE TABLE IF NOT EXISTS games (
     REFERENCES researchers(user_id)
     ON DELETE RESTRICT
 );
+
+-- =========================
+-- API KEYS (per-game, rotate-able)
+-- =========================
+CREATE TABLE IF NOT EXISTS api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  key_hash TEXT NOT NULL,
+  key_prefix TEXT NOT NULL,
+  environment TEXT NOT NULL DEFAULT 'development'
+    CHECK (environment IN ('development', 'production')),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_used_at TIMESTAMP,
+  revoked_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_game ON api_keys(game_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 
 -- =========================
 -- GAME SESSIONS TABLE
@@ -120,6 +147,13 @@ CREATE TABLE IF NOT EXISTS ai_interaction_logs (
   participant_id UUID,
   event_type TEXT NOT NULL, -- 'help_request', 'ai_suggestion', 'user_action'
   ai_model TEXT,
+  ai_provider TEXT,          -- e.g. 'openai', 'anthropic', 'google', 'custom'
+  ai_model_version TEXT,     -- e.g. 'gpt-4-turbo-2024-04-09'
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  latency_ms INTEGER,
+  flagged BOOLEAN DEFAULT FALSE,
+  flag_reason TEXT,
   payload JSONB, -- store specific data like confidence score, suggestion text
   metadata JSONB,
   created_at TIMESTAMP DEFAULT NOW(),

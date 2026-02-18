@@ -3,6 +3,8 @@ import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import multer from "multer";
 import path from "path";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
 
 const router = express.Router();
 
@@ -65,7 +67,7 @@ router.get("/", requireAuth, async (req, res) => {
 
 /**
  * POST /projects
- * Create new project
+ * Create new project + auto-generate development API key
  */
 router.post("/", requireAuth, requireRole("researcher"), upload.single("consentForm"), async (req, res) => {
     const {
@@ -75,11 +77,20 @@ router.post("/", requireAuth, requireRole("researcher"), upload.single("consentF
         experimentalConditions,
         targetSampleSize,
         irbApproval,
-        groupId // Optional group ID
+        groupId,
+        category,
+        ageGroup,
+        researchTags,     // comma-separated string from frontend
+        aiUsageType
     } = req.body;
 
     const consentFormUrl = req.file ? `/uploads/consent_forms/${req.file.filename}` : null;
     const researcherId = req.user.id;
+
+    // Parse research tags from comma-separated string to array
+    const tagsArray = researchTags
+        ? researchTags.split(",").map(t => t.trim()).filter(Boolean)
+        : null;
 
     try {
         // If groupId is provided, verify membership
@@ -93,27 +104,33 @@ router.post("/", requireAuth, requireRole("researcher"), upload.single("consentF
             }
         }
 
+        // 1. Insert the game
         const result = await pool.query(
             `INSERT INTO games (
-        name, description, game_type, researcher_id,
-        experimental_conditions, consent_form_url, target_sample_size, irb_approval, group_id, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft')
-      RETURNING *`,
+                name, description, game_type, researcher_id,
+                experimental_conditions, consent_form_url, target_sample_size,
+                irb_approval, group_id, status,
+                category, age_group, research_tags, ai_usage_type
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11, $12, $13)
+            RETURNING *`,
             [
                 name, description, gameType, researcherId,
-                experimentalConditions, consentFormUrl, targetSampleSize, irbApproval === 'true',
-                groupId || null
+                experimentalConditions, consentFormUrl, targetSampleSize,
+                irbApproval === 'true', groupId || null,
+                category || null, ageGroup || null, tagsArray, aiUsageType || 'none'
             ]
         );
+
+        const game = result.rows[0];
 
         // Log activity
         await pool.query(
             `INSERT INTO activity_logs (user_id, action_type, description, metadata)
-       VALUES ($1, 'create_project', $2, $3)`,
-            [researcherId, `Created project: ${name}`, { projectId: result.rows[0].id }]
+             VALUES ($1, 'create_project', $2, $3)`,
+            [researcherId, `Created project: ${name}`, { projectId: game.id }]
         );
 
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(game);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to create project" });
@@ -143,7 +160,7 @@ router.get("/:id", requireAuth, async (req, res) => {
  */
 router.put("/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { status, name, description } = req.body;
+    const { status, name, description, staging_url } = req.body;
     // Add more fields as needed
 
     try {
@@ -164,10 +181,11 @@ router.put("/:id", requireAuth, async (req, res) => {
         status = COALESCE($1, status),
         name = COALESCE($2, name),
         description = COALESCE($3, description),
+        staging_url = COALESCE($4, staging_url),
         updated_at = NOW()
-       WHERE id = $4
+       WHERE id = $5
        RETURNING *`,
-            [status, name, description, id]
+            [status, name, description, staging_url, id]
         );
 
         // Log if status changed

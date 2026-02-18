@@ -1,6 +1,8 @@
 import express from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
 
 const router = express.Router();
 
@@ -269,11 +271,12 @@ router.get("/games", async (req, res) => {
 
 /**
  * PUT /api/admin/games/:id/status
- * Update game status (approve, send back to draft, etc.)
+ * Update game status (approve, send back to draft, publish, etc.)
+ * When publishing, accepts optional production_url.
  */
 router.put("/games/:id/status", async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, production_url } = req.body;
 
     const validStatuses = ["draft", "pending_review", "approved", "published", "archived"];
     if (!validStatuses.includes(status)) {
@@ -281,7 +284,15 @@ router.put("/games/:id/status", async (req, res) => {
     }
 
     try {
-        await pool.query("UPDATE games SET status = $1, updated_at = NOW() WHERE id = $2", [status, id]);
+        // If publishing, also save production_url
+        if (status === "published" && production_url) {
+            await pool.query(
+                "UPDATE games SET status = $1, production_url = $2, updated_at = NOW() WHERE id = $3",
+                [status, production_url, id]
+            );
+        } else {
+            await pool.query("UPDATE games SET status = $1, updated_at = NOW() WHERE id = $2", [status, id]);
+        }
 
         // Notify the researcher about the status change
         const gameRes = await pool.query("SELECT name, researcher_id FROM games WHERE id = $1", [id]);
@@ -289,7 +300,9 @@ router.put("/games/:id/status", async (req, res) => {
             const game = gameRes.rows[0];
             const notifMsg = status === "approved"
                 ? `Your study "${game.name}" has been approved!`
-                : `Your study "${game.name}" status changed to: ${status}`;
+                : status === "published"
+                    ? `Your study "${game.name}" is now live!`
+                    : `Your study "${game.name}" status changed to: ${status}`;
 
             await pool.query(
                 `INSERT INTO notifications (user_id, type, message, metadata)
@@ -297,7 +310,6 @@ router.put("/games/:id/status", async (req, res) => {
                 [game.researcher_id, notifMsg, JSON.stringify({ game_id: id, status })]
             );
 
-            // Emit real-time notification
             req.io.to(`user_${game.researcher_id}`).emit("notification", {
                 type: "approval",
                 message: notifMsg,
@@ -309,6 +321,99 @@ router.put("/games/:id/status", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Server error updating game status" });
+    }
+});
+
+/**
+ * PUT /admin/games/:id/staging-url
+ * Set or update the staging URL for a game
+ */
+router.put("/games/:id/staging-url", async (req, res) => {
+    const { id } = req.params;
+    const { staging_url } = req.body;
+
+    if (!staging_url) {
+        return res.status(400).json({ error: "staging_url is required" });
+    }
+
+    try {
+        const result = await pool.query(
+            "UPDATE games SET staging_url = $1, updated_at = NOW() WHERE id = $2 RETURNING id, staging_url",
+            [staging_url, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "Game not found" });
+        }
+
+        res.json({ message: "Staging URL updated", staging_url: result.rows[0].staging_url });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update staging URL" });
+    }
+});
+
+/**
+ * POST /admin/games/:id/generate-key
+ * Generate a new development API key for a game (admin only)
+ * Revokes any existing dev keys and returns the raw key once.
+ */
+router.post("/games/:id/generate-key", async (req, res) => {
+    const gameId = req.params.id;
+    const adminId = req.user.id;
+
+    try {
+        // Verify game exists
+        const gameCheck = await pool.query("SELECT id, name FROM games WHERE id = $1", [gameId]);
+        if (gameCheck.rows.length === 0) {
+            return res.status(404).json({ error: "Game not found" });
+        }
+
+        // Revoke existing development keys
+        await pool.query(
+            `UPDATE api_keys SET is_active = FALSE, revoked_at = NOW()
+             WHERE game_id = $1 AND environment = 'development' AND is_active = TRUE`,
+            [gameId]
+        );
+
+        // Generate new key
+        const rawKey = `tp_dev_${crypto.randomBytes(32).toString('hex')}`;
+        const keyPrefix = rawKey.substring(0, 15);
+        const keyHash = await bcrypt.hash(rawKey, 10);
+
+        await pool.query(
+            `INSERT INTO api_keys (game_id, key_hash, key_prefix, environment, created_by)
+             VALUES ($1, $2, $3, 'development', $4)`,
+            [gameId, keyHash, keyPrefix, adminId]
+        );
+
+        res.json({
+            api_key: rawKey,
+            key_prefix: keyPrefix,
+            environment: "development",
+            game_name: gameCheck.rows[0].name
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to generate API key" });
+    }
+});
+
+/**
+ * GET /admin/games/:id/api-keys
+ * List API keys for a game (prefixes only, not full keys)
+ */
+router.get("/games/:id/api-keys", async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT id, key_prefix, environment, is_active, created_at, last_used_at, revoked_at
+             FROM api_keys WHERE game_id = $1 ORDER BY created_at DESC`,
+            [req.params.id]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch API keys" });
     }
 });
 

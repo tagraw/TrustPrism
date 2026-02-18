@@ -6,8 +6,6 @@ import "./RCreateProj.css";
 
 export default function RCreateProj({ onSuccess }) {
   const navigate = useNavigate();
-  // Initialize AI features from default JSON if possible, else defaults.
-  // We'll manage them as separate UI state and sync to experimentalConditions JSON before submit.
   const [aiFeatures, setAiFeatures] = useState({
     hints: false,
     recommendations: false,
@@ -23,7 +21,11 @@ export default function RCreateProj({ onSuccess }) {
     targetSampleSize: 100,
     irbApproval: false,
     consentForm: null,
-    groupId: ""
+    groupId: "",
+    category: "",
+    ageGroup: "",
+    researchTags: "",
+    aiUsageType: "none"
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -58,15 +60,11 @@ export default function RCreateProj({ onSuccess }) {
   const handleAiFeatureChange = (feature) => {
     setAiFeatures(prev => {
       const updated = { ...prev, [feature]: !prev[feature] };
-      // Sync to experimentalConditions JSON
-      // This is a simplistic update, in reality we might want to parse existing JSON and merge.
-      // For now, we'll just append these features to the JSON string for display/storage
       try {
         const currentJson = JSON.parse(formData.experimentalConditions || "{}");
         currentJson.features = updated;
         setFormData(fd => ({ ...fd, experimentalConditions: JSON.stringify(currentJson, null, 2) }));
       } catch (e) {
-        // If JSON is broken, just ignore for now or reset
         console.warn("Could not parse JSON to update features", e);
       }
       return updated;
@@ -79,14 +77,16 @@ export default function RCreateProj({ onSuccess }) {
 
     const data = new FormData();
     Object.keys(formData).forEach(key => {
-      data.append(key, formData[key]);
+      if (formData[key] !== null && formData[key] !== undefined) {
+        data.append(key, formData[key]);
+      }
     });
 
     try {
       const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:5000/projects", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, // Content-Type handled automatically for FormData
+        headers: { Authorization: `Bearer ${token}` },
         body: data
       });
 
@@ -105,6 +105,11 @@ export default function RCreateProj({ onSuccess }) {
   };
 
   const selectedGroupName = groups.find(g => g.id == formData.groupId)?.name || "None selected";
+
+  // Tag rendering
+  const tagList = formData.researchTags
+    ? formData.researchTags.split(",").map(t => t.trim()).filter(Boolean)
+    : [];
 
   return (
     <main className="rc-layout">
@@ -142,6 +147,52 @@ export default function RCreateProj({ onSuccess }) {
                 placeholder="e.g., The Turing Dilemma"
                 value={formData.name} onChange={handleChange}
               />
+            </div>
+
+            <div className="rc-form-row">
+              <div className="rc-form-group">
+                <label className="rc-label">Category</label>
+                <select className="rc-select" name="category" value={formData.category} onChange={handleChange}>
+                  <option value="">Select category</option>
+                  <option value="psychology">Psychology</option>
+                  <option value="education">Education</option>
+                  <option value="economics">Economics</option>
+                  <option value="social_science">Social Science</option>
+                  <option value="cognitive_science">Cognitive Science</option>
+                  <option value="computer_science">Computer Science</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="rc-form-group">
+                <label className="rc-label">Age Group</label>
+                <select className="rc-select" name="ageGroup" value={formData.ageGroup} onChange={handleChange}>
+                  <option value="">Select age group</option>
+                  <option value="under_18">Under 18</option>
+                  <option value="18-25">18–25</option>
+                  <option value="26-35">26–35</option>
+                  <option value="36-50">36–50</option>
+                  <option value="50+">50+</option>
+                  <option value="all_ages">All Ages</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="rc-form-group">
+              <label className="rc-label">Research Tags</label>
+              <input
+                className="rc-input"
+                type="text" name="researchTags"
+                placeholder="trust, bias, LLM, decision-making (comma-separated)"
+                value={formData.researchTags} onChange={handleChange}
+              />
+              {tagList.length > 0 && (
+                <div className="rc-tags-preview">
+                  {tagList.map((tag, i) => (
+                    <span key={i} className="rc-tag">{tag}</span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="rc-form-group">
@@ -197,6 +248,29 @@ export default function RCreateProj({ onSuccess }) {
             </div>
 
             <div className="rc-form-group">
+              <label className="rc-label">AI Usage Type</label>
+              <div className="rc-ai-usage-grid">
+                {[
+                  { value: 'none', label: 'None', desc: 'No AI involvement', icon: 'block' },
+                  { value: 'assistive', label: 'Assistive', desc: 'AI helps players', icon: 'support_agent' },
+                  { value: 'adversarial', label: 'Adversarial', desc: 'AI opposes players', icon: 'sports_kabaddi' },
+                  { value: 'adaptive', label: 'Adaptive', desc: 'AI adjusts difficulty', icon: 'tune' },
+                  { value: 'generative', label: 'Generative', desc: 'AI generates content', icon: 'auto_awesome' }
+                ].map(opt => (
+                  <div
+                    key={opt.value}
+                    className={`rc-usage-card ${formData.aiUsageType === opt.value ? 'selected' : ''}`}
+                    onClick={() => setFormData(prev => ({ ...prev, aiUsageType: opt.value }))}
+                  >
+                    <span className="material-icons-round">{opt.icon}</span>
+                    <strong>{opt.label}</strong>
+                    <small>{opt.desc}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rc-form-group">
               <label className="rc-label">AI Interaction Features</label>
               <div className="rc-ai-grid">
                 <div
@@ -246,12 +320,12 @@ export default function RCreateProj({ onSuccess }) {
             </div>
 
             <div className="rc-form-group">
-              <label className="rc-label">Game Mechanics & Task Types</label>
+              <label className="rc-label">Game Mechanics &amp; Task Types</label>
               <textarea
                 className="rc-textarea"
                 rows="3"
                 placeholder="Specify how AI interacts with game mechanics..."
-                name="experimentalConditions" // Keep binding to JSON string for now, user can edit raw if needed or stick to checkboxes
+                name="experimentalConditions"
                 value={formData.experimentalConditions} onChange={handleChange}
               ></textarea>
             </div>
@@ -276,6 +350,37 @@ export default function RCreateProj({ onSuccess }) {
             <div className="rc-summary-label">Group</div>
             <div className={`rc-summary-value ${formData.groupId ? 'filled' : ''}`}>
               {selectedGroupName}
+            </div>
+          </div>
+
+          <div className="rc-summary-item">
+            <div className="rc-summary-label">Category</div>
+            <div className={`rc-summary-value ${formData.category ? 'filled' : ''}`}>
+              {formData.category ? formData.category.replace('_', ' ') : "Not selected"}
+            </div>
+          </div>
+
+          <div className="rc-summary-item">
+            <div className="rc-summary-label">Age Group</div>
+            <div className={`rc-summary-value ${formData.ageGroup ? 'filled' : ''}`}>
+              {formData.ageGroup || "Not selected"}
+            </div>
+          </div>
+
+          <div className="rc-summary-item">
+            <div className="rc-summary-label">AI Usage</div>
+            <div className={`rc-summary-value ${formData.aiUsageType !== 'none' ? 'filled' : ''}`}>
+              {formData.aiUsageType.charAt(0).toUpperCase() + formData.aiUsageType.slice(1)}
+            </div>
+          </div>
+
+          <div className="rc-summary-item">
+            <div className="rc-summary-label">Research Tags</div>
+            <div>
+              {tagList.length === 0 && <span className="rc-summary-value" style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem' }}>None</span>}
+              {tagList.map((tag, i) => (
+                <span key={i} className="feature-tag">{tag}</span>
+              ))}
             </div>
           </div>
 
@@ -320,6 +425,7 @@ export default function RCreateProj({ onSuccess }) {
           </button>
         </div>
       </div>
+
 
     </main>
   );

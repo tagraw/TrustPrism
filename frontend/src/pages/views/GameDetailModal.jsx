@@ -8,6 +8,14 @@ const GameDetailModal = ({ game, onClose }) => {
     const [messages, setMessages] = useState([]);
     const [newMsg, setNewMsg] = useState("");
     const [sending, setSending] = useState(false);
+    const [apiKey, setApiKey] = useState(null);      // one-time reveal
+    const [apiKeys, setApiKeys] = useState([]);       // list of key prefixes
+    const [generatingKey, setGeneratingKey] = useState(false);
+    const [keyCopied, setKeyCopied] = useState(false);
+    const [stagingUrl, setStagingUrl] = useState(game.staging_url || "");
+    const [savingStagingUrl, setSavingStagingUrl] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const [publishing, setPublishing] = useState(false);
     const messagesEndRef = useRef(null);
     const socketRef = useRef(null);
     const token = localStorage.getItem("token");
@@ -23,6 +31,7 @@ const GameDetailModal = ({ game, onClose }) => {
     useEffect(() => {
         // Fetch existing messages
         fetchMessages();
+        fetchApiKeys();
 
         // Connect socket
         socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
@@ -131,6 +140,78 @@ const GameDetailModal = ({ game, onClose }) => {
         }
     };
 
+    const fetchApiKeys = async () => {
+        try {
+            const res = await fetch(`http://localhost:5000/admin/games/${game.id}/api-keys`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) setApiKeys(await res.json());
+        } catch (err) { console.error(err); }
+    };
+
+    const generateApiKey = async () => {
+        setGeneratingKey(true);
+        try {
+            const res = await fetch(`http://localhost:5000/admin/games/${game.id}/generate-key`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setApiKey(data.api_key);
+                fetchApiKeys();
+            }
+        } catch (err) { console.error(err); }
+        setGeneratingKey(false);
+    };
+
+    const copyApiKey = () => {
+        navigator.clipboard.writeText(apiKey);
+        setKeyCopied(true);
+        setTimeout(() => setKeyCopied(false), 2000);
+    };
+
+    const saveStagingUrl = async () => {
+        if (!stagingUrl.trim()) return;
+        setSavingStagingUrl(true);
+        try {
+            const res = await fetch(`http://localhost:5000/admin/games/${game.id}/staging-url`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ staging_url: stagingUrl.trim() })
+            });
+            if (res.ok) {
+                game.staging_url = stagingUrl.trim();
+            }
+        } catch (err) { console.error(err); }
+        setSavingStagingUrl(false);
+    };
+
+    const handlePublish = async () => {
+        const productionUrl = prompt("Enter the production URL for this game:", stagingUrl || "");
+        if (!productionUrl) return;
+
+        setPublishing(true);
+        try {
+            const res = await fetch(`http://localhost:5000/admin/games/${game.id}/status`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: "published", production_url: productionUrl })
+            });
+            if (res.ok) {
+                alert("Game published successfully!");
+                onClose();
+            }
+        } catch (err) { console.error(err); }
+        setPublishing(false);
+    };
+
     // Parse experimental_conditions safely
     const conditions = (() => {
         if (!game.experimental_conditions) return null;
@@ -139,6 +220,8 @@ const GameDetailModal = ({ game, onClose }) => {
         }
         return game.experimental_conditions;
     })();
+
+    const activeKey = apiKeys.find(k => k.is_active);
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -205,6 +288,110 @@ const GameDetailModal = ({ game, onClose }) => {
                         {game.updated_at && <p>Updated: {new Date(game.updated_at).toLocaleString()}</p>}
                     </div>
 
+                    {/* Developer API Key Section */}
+                    <div className="detail-section api-key-section">
+                        <h4>
+                            <span className="material-icons-round" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '6px' }}>vpn_key</span>
+                            Developer API Key
+                        </h4>
+
+                        {apiKey ? (
+                            <div className="api-key-reveal">
+                                <p className="api-key-warning">
+                                    <span className="material-icons-round" style={{ fontSize: '14px', verticalAlign: 'middle' }}>warning</span>
+                                    {" "}This key is shown <strong>once</strong>. Copy it now.
+                                </p>
+                                <div className="api-key-box">
+                                    <code>{apiKey}</code>
+                                    <button className="api-key-copy" onClick={copyApiKey}>
+                                        <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                            {keyCopied ? "check" : "content_copy"}
+                                        </span>
+                                        {keyCopied ? "Copied!" : "Copy"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : activeKey ? (
+                            <div className="api-key-existing">
+                                <span className="api-key-prefix">{activeKey.key_prefix}•••</span>
+                                <span className="api-key-env">{activeKey.environment}</span>
+                                <small style={{ color: '#94a3b8' }}>Created {new Date(activeKey.created_at).toLocaleDateString()}</small>
+                            </div>
+                        ) : (
+                            <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No API key generated yet.</p>
+                        )}
+
+                        <button
+                            className="generate-key-btn"
+                            onClick={generateApiKey}
+                            disabled={generatingKey}
+                        >
+                            <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                {activeKey ? "refresh" : "add"}
+                            </span>
+                            {generatingKey ? "Generating..." : activeKey ? "Regenerate Key" : "Generate API Key"}
+                        </button>
+                    </div>
+
+                    {/* Staging URL & Preview Section */}
+                    <div className="detail-section staging-section">
+                        <h4>
+                            <span className="material-icons-round" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '6px' }}>language</span>
+                            Staging URL
+                        </h4>
+                        <div className="staging-url-row">
+                            <input
+                                type="url"
+                                className="staging-url-input"
+                                value={stagingUrl}
+                                onChange={e => setStagingUrl(e.target.value)}
+                                placeholder="https://staging.game-name.example.com"
+                            />
+                            <button
+                                className="staging-save-btn"
+                                onClick={saveStagingUrl}
+                                disabled={savingStagingUrl || !stagingUrl.trim() || stagingUrl.trim() === game.staging_url}
+                            >
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                    {savingStagingUrl ? "hourglass_empty" : "save"}
+                                </span>
+                                {savingStagingUrl ? "Saving..." : "Save"}
+                            </button>
+                        </div>
+
+                        {(stagingUrl.trim() || game.staging_url) && (
+                            <button
+                                className={`preview-toggle-btn ${showPreview ? "active" : ""}`}
+                                onClick={() => setShowPreview(!showPreview)}
+                            >
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>
+                                    {showPreview ? "visibility_off" : "visibility"}
+                                </span>
+                                {showPreview ? "Hide Preview" : "Preview Game"}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Iframe Preview */}
+                    {showPreview && (stagingUrl.trim() || game.staging_url) && (
+                        <div className="preview-iframe-container">
+                            <div className="preview-iframe-header">
+                                <span className="material-icons-round" style={{ fontSize: '16px' }}>monitor</span>
+                                <span>Live Preview</span>
+                                <a href={stagingUrl.trim() || game.staging_url} target="_blank" rel="noreferrer" className="preview-open-external">
+                                    <span className="material-icons-round" style={{ fontSize: '14px' }}>open_in_new</span>
+                                </a>
+                            </div>
+                            <iframe
+                                src={stagingUrl.trim() || game.staging_url}
+                                title={`Preview: ${game.name}`}
+                                className="preview-iframe"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                            />
+                        </div>
+                    )}
+
+                    {/* Action Buttons */}
                     {game.status === "pending_review" && (
                         <div className="detail-actions">
                             <button className="approve-btn" onClick={handleApprove}>
@@ -215,6 +402,28 @@ const GameDetailModal = ({ game, onClose }) => {
                                 <span className="material-icons-round">edit_note</span>
                                 Request Changes
                             </button>
+                        </div>
+                    )}
+
+                    {game.status === "approved" && (
+                        <div className="detail-actions">
+                            <button className="publish-btn" onClick={handlePublish} disabled={publishing}>
+                                <span className="material-icons-round">rocket_launch</span>
+                                {publishing ? "Publishing..." : "Publish Game"}
+                            </button>
+                        </div>
+                    )}
+
+                    {game.status === "published" && game.production_url && (
+                        <div className="detail-section">
+                            <h4>
+                                <span className="material-icons-round" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '6px' }}>public</span>
+                                Production URL
+                            </h4>
+                            <a href={game.production_url} target="_blank" rel="noreferrer" className="consent-link">
+                                <span className="material-icons-round">link</span>
+                                {game.production_url}
+                            </a>
                         </div>
                     )}
                 </div>
