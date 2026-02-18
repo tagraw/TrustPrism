@@ -241,8 +241,14 @@ const GameDetailModal = ({ game, onClose }) => {
                         </span>
                         <span className="meta-item">
                             <span className="material-icons-round" style={{ fontSize: "16px" }}>science</span>
-                            {game.game_type}
+                            {game.game_type?.replace('_', ' ')}
                         </span>
+                        {game.category && (
+                            <span className="meta-item">
+                                <span className="material-icons-round" style={{ fontSize: "16px" }}>category</span>
+                                {game.category.replace('_', ' ')}
+                            </span>
+                        )}
                         {game.irb_approval && (
                             <span className="meta-item irb-badge">IRB Approved ✓</span>
                         )}
@@ -258,26 +264,87 @@ const GameDetailModal = ({ game, onClose }) => {
                         <p>{game.description || "No description provided."}</p>
                     </div>
 
-                    {game.consent_form_url && (
+                    {/* Basic Info Grid */}
+                    <div className="detail-section">
+                        <h4>Basic Information</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px' }}>
+                            {game.category && (
+                                <div>
+                                    <small style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>Category</small>
+                                    <p style={{ margin: '4px 0 0 0' }}>{game.category.replace('_', ' ')}</p>
+                                </div>
+                            )}
+                            {game.age_group && (
+                                <div>
+                                    <small style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>Age Group</small>
+                                    <p style={{ margin: '4px 0 0 0' }}>{game.age_group}</p>
+                                </div>
+                            )}
+                            {game.target_sample_size && (
+                                <div>
+                                    <small style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>Target Sample Size</small>
+                                    <p style={{ margin: '4px 0 0 0' }}>{game.target_sample_size} participants</p>
+                                </div>
+                            )}
+                            <div>
+                                <small style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 600 }}>IRB Approval</small>
+                                <p style={{ margin: '4px 0 0 0' }}>{game.irb_approval ? 'Yes' : 'No'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Research Tags */}
+                    {game.research_tags && game.research_tags.length > 0 && (
                         <div className="detail-section">
-                            <h4>Consent Form</h4>
-                            <a href={game.consent_form_url} target="_blank" rel="noreferrer" className="consent-link">
-                                <span className="material-icons-round">description</span>
-                                View Consent Form
-                            </a>
+                            <h4>Research Tags</h4>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {game.research_tags.map((tag, i) => (
+                                    <span key={i} style={{
+                                        padding: '3px 10px',
+                                        background: '#e0f2fe',
+                                        color: '#0369a1',
+                                        borderRadius: '12px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600
+                                    }}>{tag}</span>
+                                ))}
+                            </div>
                         </div>
                     )}
 
-                    {game.target_sample_size && (
+                    {/* AI Configuration */}
+                    <div className="detail-section">
+                        <h4>AI Configuration</h4>
+                        <p style={{ marginBottom: '8px' }}>
+                            <strong>Usage Type:</strong>{' '}
+                            {game.ai_usage_type === 'none' ? 'None' :
+                                game.ai_usage_type === 'assistive' ? 'Assistive — AI helps players' :
+                                    game.ai_usage_type === 'adversarial' ? 'Adversarial — AI opposes players' :
+                                        game.ai_usage_type === 'adaptive' ? 'Adaptive — AI adjusts difficulty' :
+                                            game.ai_usage_type === 'generative' ? 'Generative — AI generates content' :
+                                                game.ai_usage_type || '—'}
+                        </p>
+                    </div>
+
+                    {/* Consent Form */}
+                    {game.consent_form_url && (
                         <div className="detail-section">
-                            <h4>Target Sample Size</h4>
-                            <p>{game.target_sample_size} participants</p>
+                            <h4>Consent Form</h4>
+                            <iframe
+                                src={`http://localhost:5000${game.consent_form_url}`}
+                                style={{ width: '100%', height: '400px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc' }}
+                                title="Consent Form PDF"
+                            />
+                            <a href={`http://localhost:5000${game.consent_form_url}`} target="_blank" rel="noreferrer" className="consent-link" style={{ marginTop: '8px', display: 'inline-flex' }}>
+                                <span className="material-icons-round">open_in_new</span>
+                                Open in New Tab
+                            </a>
                         </div>
                     )}
 
                     {conditions && (
                         <div className="detail-section">
-                            <h4>Experimental Conditions</h4>
+                            <h4>Game Mechanics & Experimental Conditions</h4>
                             <pre className="conditions-json">{JSON.stringify(conditions, null, 2)}</pre>
                         </div>
                     )}

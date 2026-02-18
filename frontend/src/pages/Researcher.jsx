@@ -33,17 +33,29 @@ export default function Researcher() {
     fetchGroups();
   }, []);
 
-  const openProjectModal = (project) => {
-    // If it's an ID (from groups view), we need to fetch it or finding it?
-    // Actually RGroups passes the full project object usually, or we can fetch.
-    // For now assume project object.
-    setModalProject(project);
+  const openProjectModal = async (projectOrId) => {
+    // If it's a string ID (from groups view), fetch the full project object
+    if (typeof projectOrId === 'string') {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`http://localhost:5000/projects/${projectOrId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setModalProject(await res.json());
+        }
+      } catch (err) {
+        console.error("Failed to fetch project:", err);
+      }
+    } else {
+      setModalProject(projectOrId);
+    }
   };
 
   const renderContent = () => {
     switch (activeView) {
       case "groups":
-        return <RGroups groups={groups} onViewProject={setModalProject} />;
+        return <RGroups groups={groups} onViewProject={openProjectModal} />;
 
       case "insights":
         return <RDataInsights initialProjectId={selectedProject} />;
@@ -61,7 +73,7 @@ export default function Researcher() {
         return <RDashboard
           groups={groups}
           setActiveView={setActiveView}
-          onViewProject={setModalProject}
+          onViewProject={openProjectModal}
           onViewInsights={(id) => { setSelectedProject(id); setActiveView("insights"); }}
         />;
     }

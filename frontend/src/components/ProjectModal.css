@@ -400,3 +400,52 @@
     background: #f1f5f9;
     border-radius: 8px;
 }
+
+/* ── Info Grid (Overview Tab) ── */
+
+.pm-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 2rem;
+}
+
+.pm-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pm-info-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+}
+
+.pm-info-value {
+    font-size: 0.95rem;
+    color: #0f172a;
+    font-weight: 500;
+}
+
+.pm-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pm-badge.approved {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.pm-btn-preview.active {
+    background: #f1f5f9;
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+}

@@ -78,6 +78,10 @@ io.on("connection", (socket) => {
 
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded files (consent forms, etc.)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.get('/', (req, res) => {
   res.send('Backend alive');
 });

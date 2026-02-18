@@ -6,6 +6,7 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
   const [stats, setStats] = useState({ projects: [], activity: [] });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("published");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchStats() {
@@ -37,7 +38,14 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
 
   const filteredProjects = stats.projects.filter(p => {
     const status = p.status || 'draft';
-    return status === activeTab;
+    if (status !== activeTab) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (p.name || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.game_type || '').toLowerCase().includes(q);
+    }
+    return true;
   });
 
   return (
@@ -47,7 +55,12 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
           <h1>Researcher Dashboard</h1>
         </div>
         <div className="rd-actions">
-          <input className="rd-search" placeholder="Search studies..." />
+          <input
+            className="rd-search"
+            placeholder="Search studies..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
           <Notifications onOpenProject={async (gameId) => {
             try {
               const token = localStorage.getItem("token");

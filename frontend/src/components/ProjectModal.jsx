@@ -8,7 +8,7 @@ const SOCKET_URL = "http://localhost:5000";
 export default function ProjectModal({ project, onClose, onViewInsights }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
-    const [activeTab, setActiveTab] = useState("consent"); // consent, logic, description, preview
+    const [activeTab, setActiveTab] = useState("overview"); // overview, consent, logic, description, preview
     const [stagingUrl, setStagingUrl] = useState(project?.staging_url || "");
     const [savingStagingUrl, setSavingStagingUrl] = useState(false);
     const socketRef = useRef(null);
@@ -178,18 +178,87 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                     {/* Left Main Content */}
                     <main className="pm-main">
                         <div className="pm-tabs">
+                            <button className={`pm-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                                Overview
+                            </button>
                             <button className={`pm-tab ${activeTab === 'consent' ? 'active' : ''}`} onClick={() => setActiveTab('consent')}>
                                 Consent Form
                             </button>
                             <button className={`pm-tab ${activeTab === 'logic' ? 'active' : ''}`} onClick={() => setActiveTab('logic')}>
-                                AI Interaction Logic
+                                AI Configuration
                             </button>
                             <button className={`pm-tab ${activeTab === 'description' ? 'active' : ''}`} onClick={() => setActiveTab('description')}>
-                                Study Description
+                                Study Details
                             </button>
                         </div>
 
                         <div className="pm-content-view">
+
+                            {/* ── Overview Tab ── */}
+                            {activeTab === 'overview' && (
+                                <>
+                                    <div className="pm-doc-title">
+                                        <span className="material-icons-round" style={{ color: '#64748b' }}>dashboard</span>
+                                        <strong>Project Overview</strong>
+                                    </div>
+                                    <div className="pm-doc-card">
+                                        <div className="pm-info-grid">
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Game Name</span>
+                                                <span className="pm-info-value">{project.name}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Game Type</span>
+                                                <span className="pm-info-value">{project.game_type?.replace('_', ' ') || '—'}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Category</span>
+                                                <span className="pm-info-value">{project.category?.replace('_', ' ') || '—'}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Age Group</span>
+                                                <span className="pm-info-value">{project.age_group || '—'}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Target Sample Size</span>
+                                                <span className="pm-info-value">{project.target_sample_size || '—'}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">IRB Approval</span>
+                                                <span className="pm-info-value">{project.irb_approval ? 'Yes' : 'No'}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Status</span>
+                                                <span className={`pm-badge ${status}`} style={{ display: 'inline-block' }}>{status.replace('_', ' ')}</span>
+                                            </div>
+                                            <div className="pm-info-item">
+                                                <span className="pm-info-label">Created</span>
+                                                <span className="pm-info-value">{project.created_at ? new Date(project.created_at).toLocaleDateString() : '—'}</span>
+                                            </div>
+                                        </div>
+
+                                        {project.research_tags && project.research_tags.length > 0 && (
+                                            <div style={{ marginTop: '1rem' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '6px' }}>Research Tags</span>
+                                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                    {project.research_tags.map((tag, i) => (
+                                                        <span key={i} className="pm-tag">{tag}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {project.description && (
+                                            <div style={{ marginTop: '1rem' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '6px' }}>Description</span>
+                                                <p style={{ color: '#cbd5e1', lineHeight: 1.6, margin: 0 }}>{project.description}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ── Consent Form Tab ── */}
                             {activeTab === 'consent' && (
                                 <>
                                     <div className="pm-doc-title">
@@ -204,48 +273,95 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                                 title="Consent Form PDF"
                                             />
                                         ) : (
-                                            <>
-                                                <div className="pm-doc-section">
-                                                    <h4>1. Purpose of the Study</h4>
-                                                    <p>You are being invited to participate in a research study titled &quot;{project.name}&quot;. The purpose of this study is to evaluate how users perceive transparency in large language model responses.</p>
-                                                </div>
-                                                <div className="pm-doc-section">
-                                                    <h4>2. Procedures</h4>
-                                                    <p>You will be asked to interact with an AI agent across 5 different scenarios. In each scenario, the AI will provide a suggestion, and you will rate your level of agreement and trust.</p>
-                                                </div>
-                                                <div className="pm-doc-section">
-                                                    <h4>3. Data Privacy &amp; Anonymity</h4>
-                                                    <p>All data collected is anonymized using TrustPrism&apos;s end-to-end encryption protocols. Your interaction logs will be assigned a unique ID.</p>
-                                                </div>
-                                            </>
+                                            <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem 0' }}>
+                                                No consent form uploaded.
+                                            </p>
                                         )}
                                     </div>
                                 </>
                             )}
 
+                            {/* ── AI Configuration Tab ── */}
                             {activeTab === 'logic' && (
                                 <>
                                     <div className="pm-doc-title">
                                         <span className="material-icons-round" style={{ color: '#64748b' }}>psychology</span>
-                                        <strong>AI Configuration (Preview)</strong>
+                                        <strong>AI Configuration</strong>
                                     </div>
                                     <div className="pm-doc-card">
-                                        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                                            {JSON.stringify(project.experimental_conditions || {}, null, 2)}
-                                        </pre>
+                                        <div className="pm-info-grid">
+                                            <div className="pm-info-item" style={{ gridColumn: '1 / -1' }}>
+                                                <span className="pm-info-label">AI Usage Type</span>
+                                                <span className="pm-info-value" style={{ textTransform: 'capitalize' }}>
+                                                    {project.ai_usage_type === 'none' ? 'None' :
+                                                        project.ai_usage_type === 'assistive' ? 'Assistive — AI helps players' :
+                                                            project.ai_usage_type === 'adversarial' ? 'Adversarial — AI opposes players' :
+                                                                project.ai_usage_type === 'adaptive' ? 'Adaptive — AI adjusts difficulty' :
+                                                                    project.ai_usage_type === 'generative' ? 'Generative — AI generates content' :
+                                                                        project.ai_usage_type || '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {project.experimental_conditions && (
+                                            <div style={{ marginTop: '1rem' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '6px' }}>Game Mechanics & Experimental Conditions</span>
+                                                <pre style={{
+                                                    whiteSpace: 'pre-wrap',
+                                                    fontFamily: "'Fira Code', monospace",
+                                                    fontSize: '0.85rem',
+                                                    background: '#0f172a',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px',
+                                                    padding: '12px',
+                                                    color: '#a5b4fc',
+                                                    margin: 0,
+                                                    overflowX: 'auto'
+                                                }}>
+                                                    {typeof project.experimental_conditions === 'string'
+                                                        ? project.experimental_conditions
+                                                        : JSON.stringify(project.experimental_conditions, null, 2)}
+                                                </pre>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
 
+                            {/* ── Study Details Tab ── */}
                             {activeTab === 'description' && (
                                 <>
                                     <div className="pm-doc-title">
                                         <span className="material-icons-round" style={{ color: '#64748b' }}>info</span>
-                                        <strong>Detailed Description</strong>
+                                        <strong>Study Details</strong>
                                     </div>
                                     <div className="pm-doc-card">
-                                        <p>{project.description || "No description provided."}</p>
-                                        <p><strong>Game Type:</strong> {project.game_type}</p>
+                                        <div className="pm-doc-section">
+                                            <h4>Game Description</h4>
+                                            <p>{project.description || "No description provided."}</p>
+                                        </div>
+                                        <div className="pm-doc-section">
+                                            <h4>Game Type</h4>
+                                            <p>{project.game_type?.replace('_', ' ') || '—'}</p>
+                                        </div>
+                                        {project.researcher_name && (
+                                            <div className="pm-doc-section">
+                                                <h4>Researcher</h4>
+                                                <p>{project.researcher_name} {project.researcher_email ? `(${project.researcher_email})` : ''}</p>
+                                            </div>
+                                        )}
+                                        {project.staging_url && (
+                                            <div className="pm-doc-section">
+                                                <h4>Staging URL</h4>
+                                                <p><a href={project.staging_url} target="_blank" rel="noreferrer" style={{ color: '#818cf8' }}>{project.staging_url}</a></p>
+                                            </div>
+                                        )}
+                                        {project.production_url && (
+                                            <div className="pm-doc-section">
+                                                <h4>Production URL</h4>
+                                                <p><a href={project.production_url} target="_blank" rel="noreferrer" style={{ color: '#34d399' }}>{project.production_url}</a></p>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
