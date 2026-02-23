@@ -102,7 +102,7 @@ const GameDetailModal = ({ game, onClose }) => {
         }
     };
 
-    const handleApprove = async () => {
+    const handleMarkPendingReview = async () => {
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/status`, {
                 method: "PUT",
@@ -110,30 +110,14 @@ const GameDetailModal = ({ game, onClose }) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ status: "approved" })
+                body: JSON.stringify({ status: "pending_review" })
             });
             if (res.ok) {
-                alert("Study approved!");
+                alert("Marked as Pending Review. Researcher notified.");
                 onClose();
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const handleRequestChanges = async () => {
-        try {
-            const res = await fetch(`http://localhost:5000/admin/games/${game.id}/status`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: "draft" })
-            });
-            if (res.ok) {
-                alert("Sent back for changes.");
-                onClose();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to update status");
             }
         } catch (err) {
             console.error(err);
@@ -207,6 +191,9 @@ const GameDetailModal = ({ game, onClose }) => {
             if (res.ok) {
                 alert("Game published successfully!");
                 onClose();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to publish");
             }
         } catch (err) { console.error(err); }
         setPublishing(false);
@@ -236,7 +223,7 @@ const GameDetailModal = ({ game, onClose }) => {
                     </div>
 
                     <div className="detail-meta">
-                        <span className={`pill ${game.status === 'published' ? 'green' : game.status === 'approved' ? 'blue' : game.status === 'pending_review' ? 'orange' : 'gray'}`}>
+                        <span className={`pill ${game.status === 'published' ? 'green' : game.status === 'publish_requested' || game.status === 'approved' ? 'blue' : game.status === 'pending_review' ? 'orange' : 'gray'}`}>
                             {game.status?.replace("_", " ")}
                         </span>
                         <span className="meta-item">
@@ -459,20 +446,16 @@ const GameDetailModal = ({ game, onClose }) => {
                     )}
 
                     {/* Action Buttons */}
-                    {game.status === "pending_review" && (
+                    {game.status === "draft" && (
                         <div className="detail-actions">
-                            <button className="approve-btn" onClick={handleApprove}>
-                                <span className="material-icons-round">check_circle</span>
-                                Approve Study
-                            </button>
-                            <button className="request-btn" onClick={handleRequestChanges}>
-                                <span className="material-icons-round">edit_note</span>
-                                Request Changes
+                            <button className="approve-btn" onClick={handleMarkPendingReview} style={{ backgroundColor: '#f59e0b' }}>
+                                <span className="material-icons-round">rate_review</span>
+                                Mark as Pending Review
                             </button>
                         </div>
                     )}
 
-                    {game.status === "approved" && (
+                    {(game.status === "publish_requested" || game.status === "approved") && (
                         <div className="detail-actions">
                             <button className="publish-btn" onClick={handlePublish} disabled={publishing}>
                                 <span className="material-icons-round">rocket_launch</span>

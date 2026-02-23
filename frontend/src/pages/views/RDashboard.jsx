@@ -94,6 +94,12 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
           Pending Review <span>{projectCounts['pending_review'] || 0}</span>
         </button>
         <button
+          className={activeTab === 'publish_requested' ? 'active' : ''}
+          onClick={() => setActiveTab('publish_requested')}
+        >
+          Publish Requested <span>{projectCounts['publish_requested'] || 0}</span>
+        </button>
+        <button
           className={activeTab === 'published' ? 'active' : ''}
           onClick={() => setActiveTab('published')}
         >
@@ -111,7 +117,7 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
             <div key={p.id} className="rd-card" onClick={() => onViewProject(p)}>
               <div className="rd-card-header">
                 <span className={`badge active`}>
-                  {activeTab === 'published' ? 'ACTIVE STUDY' : activeTab === 'pending_review' ? 'IN REVIEW' : 'DRAFT'}
+                  {activeTab === 'published' ? 'ACTIVE STUDY' : activeTab === 'publish_requested' ? 'PUBLISH REQUESTED' : activeTab === 'pending_review' ? 'IN REVIEW' : 'DRAFT'}
                 </span>
               </div>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{p.name}</h3>

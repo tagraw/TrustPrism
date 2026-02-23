@@ -43,6 +43,7 @@ const StudyApprovals = ({ openGameId, onGameOpened }) => {
         switch (status) {
             case "published": return "green";
             case "approved": return "blue";
+            case "publish_requested": return "blue";
             case "pending_review": return "orange";
             case "draft": return "gray";
             default: return "gray";
@@ -61,7 +62,7 @@ const StudyApprovals = ({ openGameId, onGameOpened }) => {
                 <div className="card-header">
                     <h3>All Researcher Studies</h3>
                     <div className="filter-bar">
-                        {["all", "draft", "pending_review", "approved", "published"].map(s => (
+                        {["all", "draft", "pending_review", "publish_requested", "published"].map(s => (
                             <button
                                 key={s}
                                 className={`filter-btn ${filter === s ? "active" : ""}`}

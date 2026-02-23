@@ -305,22 +305,30 @@ router.put("/games/:id/status", async (req, res) => {
         const gameRes = await pool.query("SELECT name, researcher_id FROM games WHERE id = $1", [id]);
         if (gameRes.rowCount > 0) {
             const game = gameRes.rows[0];
-            const notifMsg = status === "approved"
-                ? `Your study "${game.name}" has been approved!`
-                : status === "published"
-                    ? `Your study "${game.name}" is now live!`
-                    : `Your study "${game.name}" status changed to: ${status}`;
+            let notifMsg = `Your study "${game.name}" status changed to: ${status}`;
+            let notifType = "system";
+
+            if (status === "published") {
+                notifMsg = `Your project "${game.name}" has been published!`;
+                notifType = "project_published";
+            } else if (status === "pending_review") {
+                notifMsg = `The project "${game.name}" is ready for your review.`;
+                notifType = "project_review";
+            } else if (status === "draft") {
+                notifMsg = `Changes requested for project "${game.name}". It has been returned to draft.`;
+                notifType = "project_changes_req";
+            }
 
             await pool.query(
                 `INSERT INTO notifications (user_id, type, message, metadata)
-                 VALUES ($1, 'approval', $2, $3)`,
-                [game.researcher_id, notifMsg, JSON.stringify({ game_id: id, status })]
+                 VALUES ($1, $2, $3, $4)`,
+                [game.researcher_id, notifType, notifMsg, JSON.stringify({ game_id: id, status, projectId: id })]
             );
 
             req.io.to(`user_${game.researcher_id}`).emit("notification", {
-                type: "approval",
+                type: notifType,
                 message: notifMsg,
-                metadata: { game_id: id, status }
+                metadata: { game_id: id, status, projectId: id }
             });
         }
 

@@ -160,27 +160,42 @@ router.get("/:id", requireAuth, async (req, res) => {
  */
 router.put("/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { status, name, description, staging_url } = req.body;
+    let { status, name, description, staging_url } = req.body;
     // Add more fields as needed
 
     try {
-        // Validate ownership or admin or group member
-        // For now, allow simple update if authorized
-
         const oldProject = await pool.query("SELECT * FROM games WHERE id = $1", [id]);
         if (oldProject.rows.length === 0) return res.status(404).json({ error: "Not found" });
 
+        const project = oldProject.rows[0];
+        const oldStatus = project.status;
+
         // Basic permission check (improve later)
-        if (req.user.role === 'researcher' && oldProject.rows[0].researcher_id !== req.user.id) {
+        if (req.user.role === 'researcher' && project.researcher_id !== req.user.id) {
             // Check group membership if it's a group project
             // Skipping complex check for brevity, assuming verified via middleware or simple check
+        }
+
+        // --- Status Transition Validation ---
+        if (status && status !== oldStatus) {
+            const role = req.user.role;
+            if (oldStatus === 'draft' && status === 'pending_review') {
+                if (role !== 'admin') return res.status(403).json({ error: "Only admins can mark a project as pending review" });
+            } else if (oldStatus === 'pending_review' && status === 'draft') {
+                if (role !== 'researcher') return res.status(403).json({ error: "Only researchers can return a project to draft" });
+            } else if (oldStatus === 'pending_review' && status === 'publish_requested') {
+                if (role !== 'researcher') return res.status(403).json({ error: "Only researchers can request publishing" });
+            } else if ((oldStatus === 'publish_requested' || oldStatus === 'approved' || oldStatus === 'pending_review' || oldStatus === 'draft') && status === 'published') {
+                if (role !== 'admin') return res.status(403).json({ error: "Only admins can publish a project" });
+            } else if (role !== 'admin') {
+                return res.status(403).json({ error: "Invalid status transition" });
+            }
         }
 
         // Enforce security settings when submitting for review
         if (status === 'pending_review') {
             const { getSettings } = await import("../util/settings.js");
             const settings = await getSettings();
-            const project = oldProject.rows[0];
 
             if (settings.consentFormRequired && !project.consent_form_url) {
                 return res.status(400).json({ error: "A consent form PDF is required before submitting for review" });
@@ -202,13 +217,52 @@ router.put("/:id", requireAuth, async (req, res) => {
             [status, name, description, staging_url, id]
         );
 
-        // Log if status changed
-        if (status && status !== oldProject.rows[0].status) {
+        // Notify and log if status changed
+        if (status && status !== oldStatus) {
             await pool.query(
                 `INSERT INTO activity_logs (user_id, action_type, description, metadata)
              VALUES ($1, 'update_status', $2, $3)`,
-                [req.user.id, `Project ${id} status changed to ${status}`, { projectId: id, oldStatus: oldProject.rows[0].status, newStatus: status }]
+                [req.user.id, `Project ${id} status changed to ${status}`, { projectId: id, oldStatus, newStatus: status }]
             );
+
+            // Fetch all admin IDs for notifications
+            const adminsRes = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+            const adminIds = adminsRes.rows.map(r => r.id);
+
+            // Determine notification recipient and message based on transition
+            let notifRecipients = [];
+            let notifMessage = "";
+            let notifType = "system";
+
+            if (oldStatus === 'draft' && status === 'pending_review') {
+                notifRecipients = [project.researcher_id]; // Send to researcher
+                notifMessage = `The project "${project.name}" is ready for your review.`;
+                notifType = "project_review";
+            } else if (oldStatus === 'pending_review' && status === 'draft') {
+                notifRecipients = adminIds; // Send to admins
+                notifMessage = `Changes requested for project "${project.name}". It has been returned to draft.`;
+                notifType = "project_changes_req";
+            } else if (oldStatus === 'pending_review' && status === 'publish_requested') {
+                notifRecipients = adminIds; // Send to admins
+                notifMessage = `Publish requested for project "${project.name}". Ready for final launch.`;
+                notifType = "project_publish_req";
+            } else if (status === 'published') {
+                notifRecipients = [project.researcher_id]; // Send to researcher
+                notifMessage = `Your project "${project.name}" has been published!`;
+                notifType = "project_published";
+            }
+
+            // Insert notifications and emit via socket
+            for (const recipientId of notifRecipients) {
+                const notif = await pool.query(
+                    `INSERT INTO notifications (user_id, type, message, metadata)
+                     VALUES ($1, $2, $3, $4) RETURNING *`,
+                    [recipientId, notifType, notifMessage, { projectId: id, newStatus: status }]
+                );
+                if (req.io) {
+                    req.io.to(`user_${recipientId}`).emit("notification", notif.rows[0]);
+                }
+            }
         }
 
         res.json(result.rows[0]);

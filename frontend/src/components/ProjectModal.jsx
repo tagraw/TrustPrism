@@ -106,8 +106,15 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
         setSavingStagingUrl(false);
     }
 
-    async function handlePublish() {
-        if (!confirm("Publish this game? It will become visible in Live Games.")) return;
+    async function updateStatus(newStatus) {
+        let msg = "Confirm action?";
+        if (newStatus === "pending_review") msg = "Mark as Pending Review? Researcher will be notified to review.";
+        if (newStatus === "draft") msg = "Return to draft and request changes from Admin?";
+        if (newStatus === "publish_requested") msg = "Request publish? Admin will be notified to make the site live.";
+        if (newStatus === "published") msg = "Publish this game? It will become visible in Live Games.";
+
+        if (!confirm(msg)) return;
+
         try {
             const res = await fetch(`http://localhost:5000/projects/${project.id}`, {
                 method: "PUT",
@@ -115,13 +122,25 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ status: "published" })
+                body: JSON.stringify({ status: newStatus })
             });
-            if (res.ok) {
-                alert("Game published!");
-                onClose();
+
+            if (!res.ok) {
+                const errData = await res.json();
+                alert(errData.error || `Failed to update status to ${newStatus}`);
+                return;
             }
-        } catch (err) { console.error(err); }
+
+            if (newStatus === "published") {
+                alert("Game published!");
+            } else {
+                alert(`Status changed to ${newStatus.replace('_', ' ')}`);
+            }
+            onClose(); // Alternatively update visual state inline, but closing is robust
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update status.");
+        }
     }
 
 
@@ -154,25 +173,47 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                             {activeTab === 'preview' ? 'Hide Preview' : 'Preview Game'}
                         </button>
 
-                        {isApproved && (
-                            <button className="pm-btn-approve" onClick={handlePublish}>
-                                <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>rocket_launch</span>
-                                Publish Game
+                        {isPublished && (
+                            <button className="pm-btn-approve" onClick={() => { }} style={{ cursor: 'default' }}>
+                                <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>check_circle</span>
+                                Published
                             </button>
                         )}
 
-                        {!isPublished && !isApproved && (
+                        {!isPublished && (
                             <>
-                                <button className="pm-btn-request">
-                                    <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>notes</span>
-                                    Request Changes
-                                </button>
-                                <button className="pm-btn-approve" onClick={() => alert("Approved!")}>
-                                    <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>check_circle</span>
-                                    Approve Study
-                                </button>
+                                {/* Admin actions for draft */}
+                                {currentUser.role === 'admin' && status === 'draft' && (
+                                    <button className="pm-btn-approve" onClick={() => updateStatus("pending_review")}>
+                                        <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>rate_review</span>
+                                        Mark as Pending Review
+                                    </button>
+                                )}
+
+                                {/* Researcher actions for pending_review */}
+                                {currentUser.role === 'researcher' && status === 'pending_review' && (
+                                    <>
+                                        <button className="pm-btn-request" onClick={() => updateStatus("draft")}>
+                                            <span className="material-icons-round" style={{ fontSize: '1.1rem' }}>edit_note</span>
+                                            Return to Draft
+                                        </button>
+                                        <button className="pm-btn-approve" onClick={() => updateStatus("publish_requested")}>
+                                            <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>flight_takeoff</span>
+                                            Request Publish
+                                        </button>
+                                    </>
+                                )}
+
+                                {/* Admin actions for publish_requested */}
+                                {currentUser.role === 'admin' && (status === 'publish_requested' || status === 'approved') && (
+                                    <button className="pm-btn-approve" onClick={() => updateStatus("published")}>
+                                        <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>rocket_launch</span>
+                                        Publish Game
+                                    </button>
+                                )}
                             </>
                         )}
+
                         <span className="material-icons-round" style={{ color: '#cbd5e1', cursor: 'pointer' }}>notifications_active</span>
                         <button className="material-icons-round" onClick={onClose} style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.5rem' }}>close</button>
                     </div>
