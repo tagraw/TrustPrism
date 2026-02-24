@@ -38,8 +38,8 @@ router.post("/generate", async (req, res) => {
         sessionId,
         prompt,
         systemPrompt,
-        model = "gpt-4",
-        provider = "openai",
+        model = "gemini-2.5-flash-lite",
+        provider = "gemini",
         temperature = 0.7,
         maxTokens = 1024,
         metadata = {}
@@ -87,10 +87,11 @@ router.post("/generate", async (req, res) => {
     let flagReason = null;
 
     try {
-        if (provider === "openai") {
-            aiResponse = await callOpenAI(messages, model, temperature, maxTokens);
+        if (provider === "openai" || provider === "gemini") {
+            const finalModel = model === "gpt-4" ? "gemini-2.5-flash-lite" : model;
+            aiResponse = await callAI(messages, finalModel, temperature, maxTokens);
         } else {
-            return res.status(400).json({ error: `Unsupported provider: ${provider}. Currently supported: openai` });
+            return res.status(400).json({ error: `Unsupported provider: ${provider}. Currently supported: gemini` });
         }
     } catch (err) {
         console.error("LLM call failed:", err);
@@ -165,15 +166,15 @@ router.post("/generate", async (req, res) => {
 });
 
 /**
- * Call OpenAI API
+ * Call AI API (Supports Gemini via OpenAI-compatible endpoint)
  */
-async function callOpenAI(messages, model, temperature, maxTokens) {
-    const apiKey = process.env.OPENAI_API_KEY;
+async function callAI(messages, model, temperature, maxTokens) {
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        throw new Error("OPENAI_API_KEY not configured on the server");
+        throw new Error("GEMINI_API_KEY not configured on the server");
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -189,7 +190,7 @@ async function callOpenAI(messages, model, temperature, maxTokens) {
 
     if (!response.ok) {
         const errorBody = await response.text();
-        throw new Error(`OpenAI API error ${response.status}: ${errorBody}`);
+        throw new Error(`AI API error ${response.status}: ${errorBody}`);
     }
 
     const data = await response.json();

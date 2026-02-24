@@ -22,6 +22,7 @@ import notificationRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
 import telemetryRoutes from "./routes/telemetry.js";
 import aiProxyRoutes from "./routes/aiProxy.js";
+import participantRoutes from "./routes/participant.js";
 console.log("✅ .env loaded:", {
   DB_HOST: process.env.DB_HOST,
   DB_NAME: process.env.DB_NAME,
@@ -38,16 +39,16 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], // Explicitly allow frontend origin
+    origin: ["http://localhost:5175", "http://localhost:5174", "http://localhost:3000"], // Explicitly allow frontend origin
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
     credentials: true
   }
 });
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+  origin: ["http://localhost:5175", "http://localhost:5174", "http://localhost:3000"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
   credentials: true
 }));
 
@@ -103,6 +104,7 @@ app.use("/notifications", notificationRoutes);
 app.use("/admin", adminRoutes);
 app.use("/api/telemetry", telemetryRoutes);
 app.use("/api/ai", aiProxyRoutes);
+app.use("/participant", participantRoutes);
 
 // Catch-all unmatched route
 app.use((req, res) => {

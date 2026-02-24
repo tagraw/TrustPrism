@@ -54,6 +54,7 @@ export default function User() {
               setShowFilter(false);
             }}
             onOpenSettings={() => setActiveView("profile")}
+            token={auth.token}
           />
         );
     }

@@ -192,21 +192,6 @@ export default function RSettings() {
               />
             </div>
 
-            <div className="rs-form-group">
-              <label className="rs-label">OpenAI / Anthropic API Key</label>
-              <input
-                className="rs-input"
-                type="password"
-                name="api_key"
-                value={profile.api_key || ""}
-                onChange={handleProfileChange}
-                placeholder="sk-..."
-              />
-              <small style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                Used for running AI simulations within your research groups.
-              </small>
-            </div>
-
             <div className="rs-checkbox-group">
               <label className="rs-label" style={{ marginBottom: '0.5rem' }}>Notification Preferences</label>
               <label className="rs-checkbox-label">

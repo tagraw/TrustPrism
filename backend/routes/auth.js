@@ -373,6 +373,7 @@ router.get("/profile-stats", requireAuth, async (req, res) => {
     );
 
     res.json({
+      userId: userId,
       firstName: userRes.rows[0].first_name,
       role: userRes.rows[0].role,
       sessionsCompleted: parseInt(sessionsRes.rows[0].count),

@@ -46,6 +46,7 @@
   background: #e0f2fe;
   color: #0284c7;
 }
+
 /* Logout Button */
 .sidebar-footer button {
   width: 100%;
@@ -141,9 +142,11 @@
 .stat-card.green span {
   color: #22c55e;
 }
+
 .stat-card.blue span {
   color: #0ea5e9;
 }
+
 .stat-card.yellow span {
   color: #eab308;
 }
@@ -277,6 +280,7 @@
 .filter-wrapper {
   position: relative;
 }
+
 /* Page */
 .settings-container {
   display: flex;
@@ -412,4 +416,337 @@
   padding: 0.6rem 1rem;
   border-radius: 8px;
   font-weight: 500;
+}
+
+/* ===== Game Cards ===== */
+.game-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+}
+
+.game-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.game-type-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-type-icon .material-icons-round {
+  font-size: 22px;
+}
+
+.badge.played {
+  background: #e0f2fe;
+  color: #0284c7;
+  font-size: 0.65rem;
+  letter-spacing: 0.3px;
+}
+
+.game-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0.25rem 0 0 0;
+}
+
+.game-card-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.game-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.game-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.game-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.game-researcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.play-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: white;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.play-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+.game-card-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #f59e0b;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+/* ===== Loading / Empty States ===== */
+.games-loading,
+.games-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.games-loading .material-icons-round,
+.games-empty .material-icons-round {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ===== GamePlayModal ===== */
+.gpm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.gpm-container {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+}
+
+.gpm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.gpm-header-info h2 {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #1e293b;
+}
+
+.gpm-researcher {
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.gpm-close {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: background 0.15s ease;
+}
+
+.gpm-close:hover {
+  background: #e2e8f0;
+}
+
+.gpm-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gpm-stats-bar {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.gpm-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.gpm-stat-chip .material-icons-round {
+  font-size: 18px;
+  color: #0ea5e9;
+}
+
+.gpm-stats-loading {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.gpm-iframe-wrap {
+  flex: 1;
+  min-height: 500px;
+}
+
+.gpm-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: none;
+}
+
+.gpm-no-url {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.gpm-no-url .material-icons-round {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== Study History ===== */
+.history-extra-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.history-extra-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: #475569;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.history-extra-chip .material-icons-round {
+  font-size: 18px;
+  color: #0ea5e9;
+}
+
+.history-card {
+  background: white;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem;
+}
+
+.history-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.history-card-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.history-card-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
