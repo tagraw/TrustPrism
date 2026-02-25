@@ -82,25 +82,42 @@ router.get("/:gameId/export", requireAuth, async (req, res) => {
 
         // Logic to allow group members would go here (skipping for brevity, assuming owner)
 
-        const { rows } = await pool.query(
-            `SELECT l.*, g.name as game_name
+        let query = `
+             SELECT l.*, g.name as game_name
              FROM ai_interaction_logs l
              JOIN games g ON l.game_id = g.id
              WHERE l.game_id = $1
-             ORDER BY l.created_at ASC`,
-            [gameId]
-        );
+        `;
+        const params = [gameId];
+        let paramIdx = 2;
+
+        if (req.query.date_from) {
+            query += ` AND l.created_at >= $${paramIdx}`;
+            params.push(req.query.date_from);
+            paramIdx++;
+        }
+        if (req.query.date_to) {
+            query += ` AND l.created_at <= $${paramIdx}`;
+            params.push(req.query.date_to);
+            paramIdx++;
+        }
+
+        query += ` ORDER BY l.created_at ASC`;
+
+        const { rows } = await pool.query(query, params);
 
         // Anonymize participant IDs (simple hash or masking)
         const anonymized = rows.map(r => ({
             ...r,
             participant_id: "anon_" + r.participant_id.substring(0, 8), // Simple masking
-            user_id: undefined // Remove sensitive internal ID
+            user_id: undefined, // Remove sensitive internal ID
+            prompt: r.payload?.prompt || "",
+            response: r.payload?.response || ""
         }));
 
         if (format === "csv") {
             // JSON to CSV
-            const fields = ["created_at", "event_type", "input_tokens", "output_tokens", "ai_model", "participant_id"];
+            const fields = ["created_at", "event_type", "input_tokens", "output_tokens", "ai_model", "participant_id", "prompt", "response"];
             const csv = [
                 fields.join(","),
                 ...anonymized.map(row => fields.map(f => row[f] || "").join(","))

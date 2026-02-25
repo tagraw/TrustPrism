@@ -17,7 +17,7 @@ router.get("/games", requireAuth, async (req, res) => {
         let query = `
             SELECT g.id, g.name, g.description, g.game_type, g.category,
                    g.age_group, g.research_tags, g.ai_usage_type,
-                   g.production_url, g.created_at,
+                   g.production_url, g.consent_form_url, g.created_at,
                    u.first_name || ' ' || u.last_name AS researcher_name,
                    COALESCE(s.session_count, 0)::int AS my_sessions,
                    s.best_score AS my_best_score,

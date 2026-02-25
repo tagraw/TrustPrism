@@ -324,7 +324,13 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
                 SELECT
                     COUNT(*)::int AS ai_event_count,
                     MAX(ail.ai_model) AS ai_model,
-                    ROUND(AVG(ail.latency_ms))::int AS avg_latency_ms
+                    ROUND(AVG(ail.latency_ms))::int AS avg_latency_ms,
+                    json_agg(
+                        json_build_object(
+                            'question', ail.payload->>'prompt',
+                            'response', ail.payload->>'response'
+                        )
+                    )::text AS ai_interactions
                 FROM ai_interaction_logs ail
                 WHERE ail.session_id = gs.id
             ) ai ON true
@@ -377,7 +383,8 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
             "event_count",
             "ai_event_count",
             "ai_model",
-            "avg_latency_ms"
+            "avg_latency_ms",
+            "ai_interactions"
         ];
 
         const csvRows = rows.map(r => [
@@ -391,7 +398,8 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
             r.event_count,
             r.ai_event_count,
             r.ai_model || "",
-            r.avg_latency_ms ?? ""
+            r.avg_latency_ms ?? "",
+            r.ai_interactions || ""
         ]);
 
         const csvContent = [
