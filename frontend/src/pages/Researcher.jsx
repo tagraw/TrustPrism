@@ -12,6 +12,7 @@ import RSettings from "./views/RSettings";
 import RDashboard from "./views/RDashboard";
 import RGroups from "./views/RGroups";
 import RProjectDetails from "./views/RProjectDetails";
+import RTickets from "./views/RTickets";
 import ProjectModal from "../components/ProjectModal";
 
 
@@ -60,6 +61,9 @@ export default function Researcher() {
       case "insights":
         return <RDataInsights initialProjectId={selectedProject} />;
 
+      case "tickets":
+        return <RTickets />;
+
       case "settings":
         return <RSettings />;
 
@@ -105,6 +109,14 @@ export default function Researcher() {
           >
             <span className="material-icons-round">groups</span>
             Research Groups
+          </a>
+
+          <a
+            className={activeView === "tickets" ? "active" : ""}
+            onClick={() => setActiveView("tickets")}
+          >
+            <span className="material-icons-round">confirmation_number</span>
+            My Tickets
           </a>
 
           <a

@@ -26,7 +26,8 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
     last_name,
     dob,
     groupId,
-    createGroupName
+    createGroupName,
+    terms_accepted
   } = req.body;
 
 
@@ -36,6 +37,10 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
   if (!email || !password || !first_name || !last_name) {
     return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  if (!terms_accepted) {
+    return res.status(400).json({ error: "You must accept the Terms and Conditions to register" });
   }
 
   // DOB validation only for users
@@ -73,6 +78,8 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
     // 3. Prepare Query
+    const dobParam = role === "user" ? ", dob" : "";
+    const dobVal = role === "user" ? ", $8" : "";
     const query = `
       INSERT INTO users (
         email,
@@ -80,17 +87,18 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
         role,
         first_name,
         last_name,
-        verification_token
-        ${role === "user" ? ", dob" : ""}
+        verification_token,
+        terms_accepted_at
+        ${dobParam}
       )
-      VALUES ($1, $2, $3, $4, $5, $6${role === "user" ? ", $7" : ""})
+      VALUES ($1, $2, $3, $4, $5, $6, $7${dobVal})
       RETURNING id, email, role
     `;
 
-    // 4. FIX: Include verificationToken in the params array
-    const params = [email, hash, role, first_name, last_name, verificationToken];
+    // 4. Include verificationToken and terms_accepted_at in the params array
+    const params = [email, hash, role, first_name, last_name, verificationToken, new Date()];
 
-    // If it's a user, dob becomes the 7th parameter ($7)
+    // If it's a user, dob becomes the 8th parameter ($8)
     if (role === "user") params.push(dob);
 
     const result = await pool.query(query, params);

@@ -1,22 +1,34 @@
 import { useState, useEffect } from "react";
+import TicketCreate from "../../components/tickets/TicketCreate";
+import TicketDetail from "../../components/tickets/TicketDetail";
+import "../../components/tickets/Tickets.css";
 import "../Researcher.css";
 
 export default function RProjectDetails({ projectId, goBack }) {
     const [project, setProject] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
     const [stagingUrl, setStagingUrl] = useState("");
     const [savingStagingUrl, setSavingStagingUrl] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    // Tickets state
+    const [tickets, setTickets] = useState([]);
+    const [showCreateTicket, setShowCreateTicket] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState(null);
 
-    // Poll for messages every 5s for MVP
     useEffect(() => {
         fetchProject();
-        fetchMessages();
-        const interval = setInterval(fetchMessages, 5000);
-        return () => clearInterval(interval);
+        fetchTickets();
     }, [projectId]);
+
+    async function fetchTickets() {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://localhost:5000/api/tickets?game_id=${projectId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) setTickets(await res.json());
+        } catch (e) { console.error(e); }
+    }
 
     async function fetchProject() {
         try {
@@ -32,35 +44,7 @@ export default function RProjectDetails({ projectId, goBack }) {
         } catch (e) { console.error(e); }
     }
 
-    async function fetchMessages() {
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/chat/projects/${projectId}/messages`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) setMessages(await res.json());
-            setLoading(false);
-        } catch (e) { console.error(e); }
-    }
 
-    async function sendMessage() {
-        if (!newMessage.trim()) return;
-        try {
-            const token = localStorage.getItem("token");
-            await fetch(`http://localhost:5000/chat/projects/${projectId}/messages`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ message: newMessage })
-            });
-            setNewMessage("");
-            fetchMessages();
-        } catch (err) {
-            console.error(err);
-        }
-    }
 
     async function updateStatus(status) {
         if (!confirm(`Are you sure you want to mark this as ${status}?`)) return;
@@ -199,27 +183,63 @@ export default function RProjectDetails({ projectId, goBack }) {
                     </div>
                 </section>
 
-                <section className="dashboard-card chat-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '600px' }}>
-                    <h2>Admin Collaboration</h2>
-                    <div className="chat-history" style={{ flex: 1, overflowY: 'auto', marginBottom: '10px' }}>
-                        {messages.length === 0 ? <p className="empty">No messages yet. Start discussing!</p> : (
-                            messages.map(m => (
-                                <div key={m.id} className={`chat-msg ${m.role === 'admin' ? 'admin' : 'me'}`}>
-                                    <strong>{m.first_name}:</strong> {m.message}
+                <section className="dashboard-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '600px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h2 style={{ margin: 0 }}>Tickets</h2>
+                        <button
+                            className="tickets-create-btn"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px' }}
+                            onClick={() => setShowCreateTicket(true)}
+                        >
+                            <span className="material-icons-round" style={{ fontSize: '14px' }}>add</span>
+                            New
+                        </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        {tickets.length === 0 ? <p className="empty">No tickets yet. Create one to get started!</p> : (
+                            tickets.map(t => (
+                                <div
+                                    key={t.id}
+                                    className="pm-ticket-item"
+                                    onClick={() => setSelectedTicketId(t.id)}
+                                >
+                                    <div>
+                                        <div className="pm-ticket-title">{t.title}</div>
+                                        <div className="pm-ticket-meta">
+                                            <span className={`ticket-status ${t.status}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                {t.status.replace('_', ' ')}
+                                            </span>
+                                            <span className={`ticket-priority ${t.priority}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                {t.priority}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
-                    <div className="chat-input-area">
-                        <input
-                            value={newMessage}
-                            onChange={e => setNewMessage(e.target.value)}
-                            placeholder="Type a message..."
-                            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                        />
-                        <button onClick={sendMessage}>Send</button>
-                    </div>
                 </section>
+
+                {/* Ticket Create Modal */}
+                {showCreateTicket && (
+                    <TicketCreate
+                        prefilledGameId={projectId}
+                        onClose={() => setShowCreateTicket(false)}
+                        onCreated={() => fetchTickets()}
+                    />
+                )}
+
+                {/* Ticket Detail Modal */}
+                {selectedTicketId && (
+                    <TicketDetail
+                        ticketId={selectedTicketId}
+                        role="researcher"
+                        onClose={() => {
+                            setSelectedTicketId(null);
+                            fetchTickets();
+                        }}
+                    />
+                )}
             </div>
         </main>
     );

@@ -69,7 +69,7 @@ router.get("/", requireAuth, async (req, res) => {
  * POST /projects
  * Create new project + auto-generate development API key
  */
-router.post("/", requireAuth, requireRole("researcher"), upload.single("consentForm"), async (req, res) => {
+router.post("/", requireAuth, requireRole("researcher"), upload.fields([{ name: "consentForm", maxCount: 1 }, { name: "irb_document", maxCount: 1 }]), async (req, res) => {
     const {
         name,
         description,
@@ -81,10 +81,15 @@ router.post("/", requireAuth, requireRole("researcher"), upload.single("consentF
         category,
         ageGroup,
         researchTags,     // comma-separated string from frontend
-        aiUsageType
+        aiUsageType,
+        demographicFilters,
+        dataCollectionConfig,
+        irbRequired,
+        irbNumber
     } = req.body;
 
-    const consentFormUrl = req.file ? `/uploads/consent_forms/${req.file.filename}` : null;
+    const consentFormUrl = req.files && req.files.consentForm ? `/uploads/consent_forms/${req.files.consentForm[0].filename}` : null;
+    const irbDocumentUrl = req.files && req.files.irb_document ? `/uploads/consent_forms/${req.files.irb_document[0].filename}` : null;
     const researcherId = req.user.id;
 
     // Parse research tags from comma-separated string to array
@@ -110,14 +115,19 @@ router.post("/", requireAuth, requireRole("researcher"), upload.single("consentF
                 name, description, game_type, researcher_id,
                 experimental_conditions, consent_form_url, target_sample_size,
                 irb_approval, group_id, status,
-                category, age_group, research_tags, ai_usage_type
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11, $12, $13)
+                category, age_group, research_tags, ai_usage_type,
+                demographic_filters, data_collection_config,
+                irb_required, irb_number, irb_document_url
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING *`,
             [
                 name, description, gameType, researcherId,
                 experimentalConditions, consentFormUrl, targetSampleSize,
                 irbApproval === 'true', groupId || null,
-                category || null, ageGroup || null, tagsArray, aiUsageType || 'none'
+                category || null, ageGroup || null, tagsArray, aiUsageType || 'none',
+                demographicFilters ? JSON.parse(demographicFilters) : null,
+                dataCollectionConfig ? JSON.parse(dataCollectionConfig) : null,
+                irbRequired === 'true', irbNumber || null, irbDocumentUrl
             ]
         );
 
@@ -313,7 +323,8 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
                 COALESCE(al.event_count, 0) AS event_count,
                 COALESCE(ai.ai_event_count, 0) AS ai_event_count,
                 ai.ai_model,
-                ai.avg_latency_ms
+                ai.avg_latency_ms,
+                COALESCE(u.demographics, '{}'::jsonb)::text AS participant_demographics
             FROM game_sessions gs
             LEFT JOIN LATERAL (
                 SELECT COUNT(*)::int AS event_count
@@ -384,7 +395,8 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
             "ai_event_count",
             "ai_model",
             "avg_latency_ms",
-            "ai_interactions"
+            "ai_interactions",
+            "participant_demographics"
         ];
 
         const csvRows = rows.map(r => [
@@ -399,7 +411,8 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
             r.ai_event_count,
             r.ai_model || "",
             r.avg_latency_ms ?? "",
-            r.ai_interactions || ""
+            r.ai_interactions || "",
+            r.participant_demographics || "{}"
         ]);
 
         const csvContent = [

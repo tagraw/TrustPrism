@@ -750,3 +750,76 @@
   align-items: center;
   gap: 4px;
 }
+
+/* ===== Accepted Consents ===== */
+.consent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.consent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f7fafc;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.consent-item:hover {
+  background: #eef6fc;
+}
+
+.consent-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.consent-icon {
+  font-size: 1.3rem;
+  color: #0ea5e9;
+}
+
+.consent-game-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.consent-date {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin: 2px 0 0;
+}
+
+.consent-view-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #0ea5e9;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.consent-view-link:hover {
+  background: #e0f2fe;
+}
+
+.consents-loading,
+.consents-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}

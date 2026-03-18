@@ -1,21 +1,24 @@
-import { useState, useEffect, useRef } from "react";
-import io from "socket.io-client";
+import { useState, useEffect } from "react";
+import TicketCreate from "./tickets/TicketCreate";
+import TicketDetail from "./tickets/TicketDetail";
 import "./ProjectModal.css";
 import "../pages/Admin.css";
 
-const SOCKET_URL = "http://localhost:5000";
+const API = "http://localhost:5000";
 
 export default function ProjectModal({ project, onClose, onViewInsights }) {
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState("");
-    const [activeTab, setActiveTab] = useState("overview"); // overview, consent, logic, description, preview
+    const [activeTab, setActiveTab] = useState("overview");
     const [stagingUrl, setStagingUrl] = useState(project?.staging_url || "");
     const [savingStagingUrl, setSavingStagingUrl] = useState(false);
     const [exportDateFrom, setExportDateFrom] = useState("");
     const [exportDateTo, setExportDateTo] = useState("");
-    const [exportCompletedOnly, setExportCompletedOnly] = useState(false);
     const [exporting, setExporting] = useState(false);
-    const socketRef = useRef(null);
+
+    // Tickets state
+    const [tickets, setTickets] = useState([]);
+    const [showCreateTicket, setShowCreateTicket] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState(null);
+
     const token = localStorage.getItem("token");
 
     // Decode current user from JWT
@@ -27,71 +30,28 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
     })();
 
     useEffect(() => {
-        if (!project) return;
-
-        // Connect socket
-        socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-        socketRef.current.emit("join_project", project.id);
-
-        fetchMessages();
-
-        // Listen for new messages (with deduplication)
-        socketRef.current.on("new_message", (msg) => {
-            setMessages(prev => {
-                if (msg.id && prev.some(m => m.id === msg.id)) return prev;
-                return [...prev, msg];
-            });
-        });
-
-        return () => {
-            socketRef.current?.disconnect();
-        };
+        if (project) fetchTickets();
     }, [project]);
 
-    async function fetchMessages() {
+    async function fetchTickets() {
         try {
-            const res = await fetch(`http://localhost:5000/chat/projects/${project.id}/messages`, {
+            const res = await fetch(`${API}/api/tickets?game_id=${project.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) setMessages(await res.json());
+            if (res.ok) setTickets(await res.json());
         } catch (e) { console.error(e); }
-    }
-
-    async function sendMessage() {
-        if (!newMessage.trim()) return;
-        try {
-            const res = await fetch(`http://localhost:5000/chat/projects/${project.id}/messages`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ message: newMessage })
-            });
-            if (res.ok) {
-                const sentMsg = await res.json();
-                setMessages(prev => {
-                    if (prev.some(m => m.id === sentMsg.id)) return prev;
-                    return [...prev, sentMsg];
-                });
-            }
-            setNewMessage("");
-        } catch (err) {
-            console.error(err);
-        }
     }
 
     if (!project) return null;
 
     const status = project.status || 'draft';
     const isPublished = status === 'published';
-    const isApproved = status === 'approved';
 
     async function saveStagingUrl() {
         if (!stagingUrl.trim()) return;
         setSavingStagingUrl(true);
         try {
-            const res = await fetch(`http://localhost:5000/projects/${project.id}`, {
+            const res = await fetch(`${API}/projects/${project.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -116,7 +76,7 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
         if (!confirm(msg)) return;
 
         try {
-            const res = await fetch(`http://localhost:5000/projects/${project.id}`, {
+            const res = await fetch(`${API}/projects/${project.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -136,7 +96,7 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
             } else {
                 alert(`Status changed to ${newStatus.replace('_', ' ')}`);
             }
-            onClose(); // Alternatively update visual state inline, but closing is robust
+            onClose();
         } catch (err) {
             console.error(err);
             alert("Failed to update status.");
@@ -266,17 +226,19 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                                 <span className="pm-info-value">{project.category?.replace('_', ' ') || '—'}</span>
                                             </div>
                                             <div className="pm-info-item">
-                                                <span className="pm-info-label">Age Group</span>
-                                                <span className="pm-info-value">{project.age_group || '—'}</span>
-                                            </div>
-                                            <div className="pm-info-item">
                                                 <span className="pm-info-label">Target Sample Size</span>
                                                 <span className="pm-info-value">{project.target_sample_size || '—'}</span>
                                             </div>
                                             <div className="pm-info-item">
-                                                <span className="pm-info-label">IRB Approval</span>
-                                                <span className="pm-info-value">{project.irb_approval ? 'Yes' : 'No'}</span>
+                                                <span className="pm-info-label">IRB Required</span>
+                                                <span className="pm-info-value">{project.irb_required ? 'Yes' : 'No'}</span>
                                             </div>
+                                            {project.irb_required && (
+                                                <div className="pm-info-item">
+                                                    <span className="pm-info-label">IRB Status</span>
+                                                    <span className="pm-info-value">{project.irb_approved ? 'Approved ✅' : 'Pending ⏳'}</span>
+                                                </div>
+                                            )}
                                             <div className="pm-info-item">
                                                 <span className="pm-info-label">Status</span>
                                                 <span className={`pm-badge ${status}`} style={{ display: 'inline-block' }}>{status.replace('_', ' ')}</span>
@@ -301,7 +263,42 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                         {project.description && (
                                             <div style={{ marginTop: '1rem' }}>
                                                 <span className="pm-info-label" style={{ display: 'block', marginBottom: '6px' }}>Description</span>
-                                                <p style={{ color: '#cbd5e1', lineHeight: 1.6, margin: 0 }}>{project.description}</p>
+                                                <p style={{ color: '#0f172a', lineHeight: 1.6, margin: 0 }}>{project.description}</p>
+                                            </div>
+                                        )}
+
+
+                                        {project.demographic_filters && (
+                                            <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '8px', color: '#0f172a' }}>Participant Targeting</span>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', fontSize: '0.85rem' }}>
+                                                    <div><strong style={{color: '#64748b'}}>Age Range:</strong> {project.demographic_filters.minAge} - {project.demographic_filters.maxAge}</div>
+                                                    <div><strong style={{color: '#64748b'}}>Location:</strong> {project.demographic_filters.locationCountry || 'Any'} {project.demographic_filters.locationState ? `(${project.demographic_filters.locationState})` : ''}</div>
+                                                    <div><strong style={{color: '#64748b'}}>Gender:</strong> {project.demographic_filters.gender?.join(', ') || 'Any'}</div>
+                                                    <div><strong style={{color: '#64748b'}}>Race/Ethnicity:</strong> {project.demographic_filters.raceEthnicity?.join(', ') || 'Any'}</div>
+                                                    {project.demographic_filters.customNotes && <div style={{gridColumn: '1 / -1'}}><strong style={{color: '#64748b'}}>Notes:</strong> {project.demographic_filters.customNotes}</div>}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {project.data_collection_config && (
+                                            <div style={{ marginTop: '1rem', background: '#f0f9ff', padding: '1rem', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '8px', color: '#0369a1' }}>Data Collection Configurations</span>
+                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                    {Object.entries(project.data_collection_config).map(([key, val]) => val && (
+                                                        <span key={key} style={{ background: '#e0f2fe', color: '#0284c7', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                                                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {project.irb_required && project.irb_number && (
+                                            <div style={{ marginTop: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                                                <span className="pm-info-label" style={{ display: 'block', marginBottom: '8px', color: '#b45309' }}>IRB Protocol</span>
+                                                <div style={{ fontSize: '0.85rem' }}>
+                                                    <strong style={{color: '#92400e'}}>Protocol Number:</strong> {project.irb_number}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -315,10 +312,20 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                         <span className="material-icons-round" style={{ color: '#64748b' }}>description</span>
                                         <strong>Participant Consent Form</strong>
                                     </div>
-                                    <div className="pm-doc-card">
+                                    <div className="pm-doc-card" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                                        {project.irb_document_url && (
+                                            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <strong style={{color: '#0f172a'}}>IRB Approval Document</strong>
+                                                    <div style={{fontSize: '0.8rem', color: '#64748b', marginTop: '4px'}}>Protocol: {project.irb_number}</div>
+                                                </div>
+                                                <a href={`${API}${project.irb_document_url}`} target="_blank" rel="noreferrer" style={{ background: '#0ea5e9', color: 'white', textDecoration: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>View PDF</a>
+                                            </div>
+                                        )}
+
                                         {project.consent_form_url ? (
                                             <iframe
-                                                src={`http://localhost:5000${project.consent_form_url}`}
+                                                src={`${API}${project.consent_form_url}`}
                                                 className="pm-pdf-viewer"
                                                 title="Consent Form PDF"
                                             />
@@ -518,23 +525,13 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                             </div>
                                         </div>
 
-                                        <div style={{ marginTop: '1rem' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={exportCompletedOnly}
-                                                    onChange={e => setExportCompletedOnly(e.target.checked)}
-                                                    style={{ width: '16px', height: '16px', accentColor: '#0ea5e9' }}
-                                                />
-                                                Only completed sessions
-                                            </label>
-                                        </div>
+
                                     </div>
 
                                     <div className="pm-doc-card" style={{ marginTop: '1rem' }}>
                                         <h4 style={{ margin: '0 0 0.75rem 0', color: '#0f172a' }}>CSV Columns</h4>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {['hashed_user_id', 'session_id', 'started_at', 'ended_at', 'duration_seconds', 'score', 'completion_status', 'event_count', 'ai_event_count', 'ai_model', 'avg_latency_ms'].map(col => (
+                                            {['created_at', 'event_type', 'input_tokens', 'output_tokens', 'ai_model', 'participant_id', 'prompt', 'response'].map(col => (
                                                 <span key={col} style={{
                                                     padding: '3px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0',
                                                     borderRadius: '4px', fontSize: '0.75rem', fontFamily: 'monospace', color: '#475569'
@@ -548,11 +545,11 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                             setExporting(true);
                                             try {
                                                 const params = new URLSearchParams();
+                                                params.set('format', 'csv');
                                                 if (exportDateFrom) params.set('date_from', exportDateFrom);
                                                 if (exportDateTo) params.set('date_to', exportDateTo);
-                                                if (exportCompletedOnly) params.set('min_completion', '100');
                                                 const res = await fetch(
-                                                    `http://localhost:5000/projects/${project.id}/export?${params}`,
+                                                    `${API}/projects/${project.id}/export?${params}`,
                                                     { headers: { Authorization: `Bearer ${token}` } }
                                                 );
                                                 if (!res.ok) {
@@ -589,55 +586,71 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                         </div>
                     </main>
 
-                    {/* Right Sidebar (Chat) */}
+                    {/* Right Sidebar — Tickets (replaced chat) */}
                     <aside className="pm-sidebar">
                         <div className="pm-sb-header">
-                            <span>COLLABORATION CHAT</span>
-                            <span className="pm-badge" style={{ background: '#e0f2fe', color: '#0284c7' }}>ADMIN REVIEW</span>
+                            <span>TICKETS</span>
+                            <button
+                                className="tickets-create-btn"
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px' }}
+                                onClick={() => setShowCreateTicket(true)}
+                            >
+                                <span className="material-icons-round" style={{ fontSize: '14px' }}>add</span>
+                                New
+                            </button>
                         </div>
 
-                        <div className="pm-chat-list">
-                            {messages.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.9rem', textAlign: 'center', marginTop: '2rem' }}>Start the discussion...</p>}
-
-                            {messages.map((m, i) => {
-                                const isMe = String(m.sender_id) === String(currentUser.id);
-                                const senderName = isMe ? "You" : `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Unknown';
-                                const roleLabel = m.role === 'admin' ? '(Admin)' : m.role === 'researcher' ? '(Researcher)' : '';
-                                const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-
-                                return (
-                                    <div key={m.id || i} className="pm-chat-msg">
-                                        <div className="pm-msg-meta" style={{ justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                                            {isMe ?
-                                                <><span>{time}</span> <strong>You</strong></> :
-                                                <><strong>{senderName} {roleLabel}</strong> <span>{time}</span></>
-                                            }
-                                        </div>
-                                        <div className={`pm-msg-bubble ${isMe ? 'me' : 'admin'}`}>
-                                            {m.message}
+                        <div className="pm-tickets-list">
+                            {tickets.length === 0 ? (
+                                <div className="pm-tickets-empty">
+                                    <span className="material-icons-round" style={{ fontSize: '2rem', color: '#cbd5e1', display: 'block', marginBottom: '8px' }}>confirmation_number</span>
+                                    No tickets for this game yet
+                                </div>
+                            ) : (
+                                tickets.map(t => (
+                                    <div
+                                        key={t.id}
+                                        className="pm-ticket-item"
+                                        onClick={() => setSelectedTicketId(t.id)}
+                                    >
+                                        <div>
+                                            <div className="pm-ticket-title">{t.title}</div>
+                                            <div className="pm-ticket-meta">
+                                                <span className={`ticket-status ${t.status}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                    {t.status.replace('_', ' ')}
+                                                </span>
+                                                <span className={`ticket-priority ${t.priority}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                    {t.priority}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="pm-chat-input-area">
-                            <div className="pm-chat-input-wrapper">
-                                <span className="material-icons-round" style={{ color: '#cbd5e1', fontSize: '1.2rem', transform: 'rotate(45deg)' }}>attach_file</span>
-                                <input
-                                    className="pm-chat-input"
-                                    placeholder="Type your message or feedback..."
-                                    value={newMessage}
-                                    onChange={e => setNewMessage(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                                />
-                                <button className="pm-btn-send" onClick={sendMessage}>
-                                    <span className="material-icons-round" style={{ fontSize: '1.2rem' }}>send</span>
-                                </button>
-                            </div>
+                                ))
+                            )}
                         </div>
                     </aside>
                 </div>
+
+                {/* Ticket Create Modal */}
+                {showCreateTicket && (
+                    <TicketCreate
+                        prefilledGameId={project.id}
+                        onClose={() => setShowCreateTicket(false)}
+                        onCreated={() => fetchTickets()}
+                    />
+                )}
+
+                {/* Ticket Detail Modal */}
+                {selectedTicketId && (
+                    <TicketDetail
+                        ticketId={selectedTicketId}
+                        role={currentUser.role}
+                        onClose={() => {
+                            setSelectedTicketId(null);
+                            fetchTickets();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

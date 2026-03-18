@@ -1,23 +1,24 @@
-import { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
+import { useState, useEffect } from "react";
+import TicketCreate from "../../components/tickets/TicketCreate";
+import TicketDetail from "../../components/tickets/TicketDetail";
+import "../../components/tickets/Tickets.css";
 import "../Admin.css";
 
-const SOCKET_URL = "http://localhost:5000";
+const API = "http://localhost:5000";
 
 const GameDetailModal = ({ game, onClose }) => {
-    const [messages, setMessages] = useState([]);
-    const [newMsg, setNewMsg] = useState("");
-    const [sending, setSending] = useState(false);
-    const [apiKey, setApiKey] = useState(null);      // one-time reveal
-    const [apiKeys, setApiKeys] = useState([]);       // list of key prefixes
+    const [apiKey, setApiKey] = useState(null);
+    const [apiKeys, setApiKeys] = useState([]);
     const [generatingKey, setGeneratingKey] = useState(false);
     const [keyCopied, setKeyCopied] = useState(false);
     const [stagingUrl, setStagingUrl] = useState(game.staging_url || "");
     const [savingStagingUrl, setSavingStagingUrl] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [publishing, setPublishing] = useState(false);
-    const messagesEndRef = useRef(null);
-    const socketRef = useRef(null);
+    // Tickets state
+    const [tickets, setTickets] = useState([]);
+    const [showCreateTicket, setShowCreateTicket] = useState(false);
+    const [selectedTicketId, setSelectedTicketId] = useState(null);
     const token = localStorage.getItem("token");
 
     // Decode current user from token
@@ -29,78 +30,20 @@ const GameDetailModal = ({ game, onClose }) => {
     })();
 
     useEffect(() => {
-        // Fetch existing messages
-        fetchMessages();
         fetchApiKeys();
-
-        // Connect socket
-        socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-        socketRef.current.emit("join_project", game.id);
-
-        socketRef.current.on("new_message", (msg) => {
-            setMessages(prev => {
-                // Deduplicate: skip if message with same ID already exists
-                if (msg.id && prev.some(m => m.id === msg.id)) return prev;
-                return [...prev, msg];
-            });
-        });
-
-        return () => {
-            socketRef.current?.disconnect();
-        };
+        fetchTickets();
     }, [game.id]);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
-
-    const fetchMessages = async () => {
+    async function fetchTickets() {
         try {
-            const res = await fetch(`http://localhost:5000/chat/projects/${game.id}/messages`, {
+            const res = await fetch(`${API}/api/tickets?game_id=${game.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (res.ok) {
-                setMessages(await res.json());
-            }
-        } catch (err) {
-            console.error("Failed to fetch messages", err);
-        }
-    };
+            if (res.ok) setTickets(await res.json());
+        } catch (err) { console.error(err); }
+    }
 
-    const sendMessage = async () => {
-        if (!newMsg.trim() || sending) return;
-        setSending(true);
-        try {
-            const res = await fetch(`http://localhost:5000/chat/projects/${game.id}/messages`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ message: newMsg.trim() })
-            });
-            if (res.ok) {
-                const sentMsg = await res.json();
-                // Add message immediately from POST response (socket may also deliver it; deduplicated above)
-                setMessages(prev => {
-                    if (prev.some(m => m.id === sentMsg.id)) return prev;
-                    return [...prev, sentMsg];
-                });
-                setNewMsg("");
-            }
-        } catch (err) {
-            console.error("Failed to send message", err);
-        } finally {
-            setSending(false);
-        }
-    };
 
-    const handleKeyDown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    };
 
     const handleMarkPendingReview = async () => {
         try {
@@ -478,49 +421,68 @@ const GameDetailModal = ({ game, onClose }) => {
                     )}
                 </div>
 
-                {/* Right: Chat */}
+                {/* Right: Tickets (replaced chat) */}
                 <div className="chat-pane">
                     <div className="chat-header">
-                        <span className="material-icons-round">forum</span>
-                        <h4>Project Chat</h4>
-                        {game.group_id && <small>Shared with researcher group</small>}
-                    </div>
-
-                    <div className="chat-messages">
-                        {messages.length === 0 && (
-                            <p className="chat-empty">No messages yet. Start the conversation!</p>
-                        )}
-                        {messages.map((msg, i) => (
-                            <div
-                                key={msg.id || i}
-                                className={`chat-bubble ${String(msg.sender_id) === String(currentUser.id) ? "mine" : "theirs"}`}
-                            >
-                                <div className="chat-bubble-header">
-                                    <strong>{msg.first_name} {msg.last_name}</strong>
-                                    <span className={`pill tiny ${msg.role === 'admin' ? 'purple' : msg.role === 'researcher' ? 'blue' : 'gray'}`}>
-                                        {msg.role}
-                                    </span>
-                                </div>
-                                <p>{msg.message}</p>
-                                <small>{new Date(msg.created_at).toLocaleTimeString()}</small>
-                            </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    <div className="chat-input-bar">
-                        <textarea
-                            value={newMsg}
-                            onChange={e => setNewMsg(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Type a message..."
-                            rows={2}
-                        />
-                        <button onClick={sendMessage} disabled={sending || !newMsg.trim()} className="send-btn">
-                            <span className="material-icons-round">send</span>
+                        <span className="material-icons-round">confirmation_number</span>
+                        <h4>Tickets</h4>
+                        <button
+                            className="tickets-create-btn"
+                            style={{ padding: '4px 10px', fontSize: '0.72rem', borderRadius: '6px', marginLeft: 'auto' }}
+                            onClick={() => setShowCreateTicket(true)}
+                        >
+                            <span className="material-icons-round" style={{ fontSize: '14px' }}>add</span>
+                            New
                         </button>
                     </div>
+
+                    <div className="chat-messages" style={{ gap: '0.5rem' }}>
+                        {tickets.length === 0 ? (
+                            <p className="chat-empty">No tickets yet for this game.</p>
+                        ) : (
+                            tickets.map(t => (
+                                <div
+                                    key={t.id}
+                                    className="pm-ticket-item"
+                                    onClick={() => setSelectedTicketId(t.id)}
+                                >
+                                    <div>
+                                        <div className="pm-ticket-title">{t.title}</div>
+                                        <div className="pm-ticket-meta">
+                                            <span className={`ticket-status ${t.status}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                {t.status.replace('_', ' ')}
+                                            </span>
+                                            <span className={`ticket-priority ${t.priority}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                                {t.priority}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
+
+                {/* Ticket Create Modal */}
+                {showCreateTicket && (
+                    <TicketCreate
+                        prefilledGameId={game.id}
+                        onClose={() => setShowCreateTicket(false)}
+                        onCreated={() => fetchTickets()}
+                    />
+                )}
+
+                {/* Ticket Detail Modal */}
+                {selectedTicketId && (
+                    <TicketDetail
+                        ticketId={selectedTicketId}
+                        role="admin"
+                        onClose={() => {
+                            setSelectedTicketId(null);
+                            fetchTickets();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

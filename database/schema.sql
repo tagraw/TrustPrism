@@ -84,6 +84,12 @@ CREATE TABLE IF NOT EXISTS games (
   research_tags TEXT[],
   ai_usage_type TEXT DEFAULT 'none'
     CHECK (ai_usage_type IN ('none', 'assistive', 'adversarial', 'adaptive', 'generative')),
+  demographic_filters JSONB,
+  data_collection_config JSONB,
+  irb_required BOOLEAN DEFAULT FALSE,
+  irb_number TEXT,
+  irb_document_url TEXT,
+  irb_approved BOOLEAN DEFAULT FALSE,
   staging_url TEXT,
   production_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),

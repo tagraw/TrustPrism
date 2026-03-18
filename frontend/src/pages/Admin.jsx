@@ -7,6 +7,7 @@ import StudyApprovals from "./views/Study_Approvals";
 import AuditMonitor from "./views/AuditMonitor";
 import SDKDocs from "./views/SDKDocs";
 import SecuritySettings from "./views/SecuritySettings";
+import AdminTickets from "./views/AdminTickets";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Admin.css";
 
@@ -103,6 +104,13 @@ export default function Admin() {
             Study Approvals
           </a>
           <a
+            className={activeView === "tickets" ? "active" : ""}
+            onClick={() => setActiveView("tickets")}
+          >
+            <span className="material-icons-round">confirmation_number</span>
+            Tickets
+          </a>
+          <a
             className={activeView === "audit" ? "active" : ""}
             onClick={() => setActiveView("audit")}
           >
@@ -138,6 +146,7 @@ export default function Admin() {
             {activeView === 'users' ? 'User Management' :
               activeView === 'groups' ? 'Group Management' :
                 activeView === 'approvals' ? 'Study Approvals' :
+                  activeView === 'tickets' ? 'Ticket Dashboard' :
                   activeView === 'audit' ? 'Audit & Monitoring' :
                     activeView === 'sdk' ? 'SDK Documentation' :
                       activeView === 'settings' ? 'Security Settings' :
@@ -159,6 +168,8 @@ export default function Admin() {
           <GroupManagement />
         ) : activeView === 'approvals' ? (
           <StudyApprovals openGameId={notificationGameId} onGameOpened={() => setNotificationGameId(null)} />
+        ) : activeView === 'tickets' ? (
+          <AdminTickets />
         ) : activeView === 'audit' ? (
           <AuditMonitor />
         ) : activeView === 'sdk' ? (

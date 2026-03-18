@@ -80,7 +80,6 @@ export default function RDataInsights() {
             <button className="secondary-btn" onClick={() => { setViewMode('list'); setSelectedGame(null); }}>Back to Projects</button>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button className="export-btn" onClick={() => handleExport('csv')}>Export CSV</button>
-              <button className="export-btn" onClick={() => handleExport('json')}>Export JSON</button>
             </div>
           </div>
         )}
@@ -133,6 +132,8 @@ export default function RDataInsights() {
                 <tr style={{ background: "#f8fafc", textAlign: "left" }}>
                   <th style={{ padding: "0.75rem" }}>Time</th>
                   <th style={{ padding: "0.75rem" }}>Event Type</th>
+                  <th style={{ padding: "0.75rem" }}>Prompt</th>
+                  <th style={{ padding: "0.75rem" }}>Response</th>
                   <th style={{ padding: "0.75rem" }}>AI Model</th>
                   <th style={{ padding: "0.75rem" }}>Participant (Anon)</th>
                 </tr>
@@ -155,6 +156,12 @@ export default function RDataInsights() {
                         }}>
                           {log.event_type}
                         </span>
+                      </td>
+                      <td style={{ padding: "0.75rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={log.payload?.prompt}>
+                        {log.payload?.prompt || "-"}
+                      </td>
+                      <td style={{ padding: "0.75rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={log.payload?.response}>
+                        {log.payload?.response || "-"}
                       </td>
                       <td style={{ padding: "0.75rem" }}>{log.ai_model || "N/A"}</td>
                       <td style={{ padding: "0.75rem" }}>{log.participant_id ? `anon_${log.participant_id.substring(0, 6)}` : "N/A"}</td>

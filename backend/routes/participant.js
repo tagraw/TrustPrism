@@ -151,4 +151,75 @@ router.get("/games/:id/my-stats", requireAuth, async (req, res) => {
     }
 });
 
+/**
+ * POST /participant/consents
+ * Record that the current user has accepted consent for a specific game.
+ */
+router.post("/consents", requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    const { gameId, consentFormUrl } = req.body;
+
+    if (!gameId) {
+        return res.status(400).json({ error: "gameId is required" });
+    }
+
+    try {
+        await pool.query(`
+            INSERT INTO user_consents (user_id, game_id, consent_form_url)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id, game_id) DO NOTHING
+        `, [userId, gameId, consentFormUrl || null]);
+
+        res.json({ message: "Consent recorded" });
+    } catch (err) {
+        console.error("Failed to record consent:", err);
+        res.status(500).json({ error: "Failed to record consent" });
+    }
+});
+
+/**
+ * GET /participant/consents
+ * Return all game IDs the current user has consented to.
+ * Used by the dashboard to skip showing consent modal for already-consented games.
+ */
+router.get("/consents", requireAuth, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const { rows } = await pool.query(
+            "SELECT game_id FROM user_consents WHERE user_id = $1",
+            [userId]
+        );
+        res.json(rows.map(r => r.game_id));
+    } catch (err) {
+        console.error("Failed to fetch consents:", err);
+        res.status(500).json({ error: "Failed to fetch consents" });
+    }
+});
+
+/**
+ * GET /participant/my-consents
+ * Return detailed consent history with game names, URLs, and timestamps.
+ * Used by the settings view to display accepted consents.
+ */
+router.get("/my-consents", requireAuth, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const { rows } = await pool.query(`
+            SELECT uc.id, uc.game_id, g.name AS game_name,
+                   uc.consent_form_url, uc.accepted_at
+            FROM user_consents uc
+            JOIN games g ON g.id = uc.game_id
+            WHERE uc.user_id = $1
+            ORDER BY uc.accepted_at DESC
+        `, [userId]);
+
+        res.json(rows);
+    } catch (err) {
+        console.error("Failed to fetch consent history:", err);
+        res.status(500).json({ error: "Failed to fetch consent history" });
+    }
+});
+
 export default router;

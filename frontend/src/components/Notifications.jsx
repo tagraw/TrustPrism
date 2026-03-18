@@ -94,6 +94,7 @@ export default function Notifications({ onOpenProject }) {
     function getIcon(type) {
         switch (type) {
             case "message": return "chat";
+            case "ticket": return "confirmation_number";
             case "approval": return "check_circle";
             default: return "info";
         }

@@ -19,13 +19,32 @@ export default function RCreateProj({ onSuccess }) {
     gameType: "decision_task",
     experimentalConditions: JSON.stringify({ ai_model: "gpt-4", reliability: 0.8 }, null, 2),
     targetSampleSize: 100,
-    irbApproval: false,
     consentForm: null,
     groupId: "",
     category: "",
-    ageGroup: "",
     researchTags: "",
-    aiUsageType: "none"
+    aiUsageType: "none",
+    demographicFilters: {
+      minAge: 18,
+      maxAge: 60,
+      raceEthnicity: [],
+      locationCountry: "",
+      locationState: "",
+      gender: [],
+      customNotes: ""
+    },
+    dataCollectionConfig: {
+      age: false,
+      raceEthnicity: false,
+      gender: false,
+      location: false,
+      education: false,
+      custom: false
+    },
+    irbRequired: false,
+    irbNumber: "",
+    irbDocument: null,
+    irbAgreement: false
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +76,32 @@ export default function RCreateProj({ onSuccess }) {
     }));
   };
 
+  const handleNestedChange = (section, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleArrayToggle = (section, field, value) => {
+    setFormData(prev => {
+      const currentArray = prev[section][field];
+      const newArray = currentArray.includes(value) 
+        ? currentArray.filter(i => i !== value)
+        : [...currentArray, value];
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: newArray
+        }
+      };
+    });
+  };
+
   const handleAiFeatureChange = (feature) => {
     setAiFeatures(prev => {
       const updated = { ...prev, [feature]: !prev[feature] };
@@ -77,7 +122,11 @@ export default function RCreateProj({ onSuccess }) {
 
     const data = new FormData();
     Object.keys(formData).forEach(key => {
-      if (formData[key] !== null && formData[key] !== undefined) {
+      if (key === 'demographicFilters' || key === 'dataCollectionConfig') {
+        data.append(key, JSON.stringify(formData[key]));
+      } else if (key === 'irbDocument' && formData[key]) {
+        data.append('irb_document', formData[key]);
+      } else if (formData[key] !== null && formData[key] !== undefined) {
         data.append(key, formData[key]);
       }
     });
@@ -164,18 +213,7 @@ export default function RCreateProj({ onSuccess }) {
                 </select>
               </div>
 
-              <div className="rc-form-group">
-                <label className="rc-label">Age Group</label>
-                <select className="rc-select" name="ageGroup" value={formData.ageGroup} onChange={handleChange}>
-                  <option value="">Select age group</option>
-                  <option value="under_18">Under 18</option>
-                  <option value="18-25">18–25</option>
-                  <option value="26-35">26–35</option>
-                  <option value="36-50">36–50</option>
-                  <option value="50+">50+</option>
-                  <option value="all_ages">All Ages</option>
-                </select>
-              </div>
+
             </div>
 
             <div className="rc-form-group">
@@ -238,6 +276,118 @@ export default function RCreateProj({ onSuccess }) {
                 value={formData.description} onChange={handleChange}
               ></textarea>
             </div>
+          </section>
+
+          {/* Section: Participant Targeting */}
+          <section className="rc-section">
+            <div className="rc-section-header">
+              <span className="material-icons-round rc-section-icon">group_add</span>
+              <span>Participant Targeting (Optional)</span>
+            </div>
+
+            <div className="rc-form-row">
+              <div className="rc-form-group">
+                <label className="rc-label">Age Range</label>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input type="number" className="rc-input" placeholder="Min" value={formData.demographicFilters.minAge} onChange={(e) => handleNestedChange('demographicFilters', 'minAge', e.target.value)} />
+                  <input type="number" className="rc-input" placeholder="Max" value={formData.demographicFilters.maxAge} onChange={(e) => handleNestedChange('demographicFilters', 'maxAge', e.target.value)} />
+                </div>
+              </div>
+              <div className="rc-form-group">
+                <label className="rc-label">Location</label>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input type="text" className="rc-input" placeholder="Country" value={formData.demographicFilters.locationCountry} onChange={(e) => handleNestedChange('demographicFilters', 'locationCountry', e.target.value)} />
+                  <input type="text" className="rc-input" placeholder="State/Region" value={formData.demographicFilters.locationState} onChange={(e) => handleNestedChange('demographicFilters', 'locationState', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="rc-form-row">
+              <div className="rc-form-group">
+                <label className="rc-label">Gender</label>
+                <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
+                  {['Male', 'Female', 'Non-binary', 'Other'].map(g => (
+                    <label key={g} style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer'}}>
+                      <input type="checkbox" checked={formData.demographicFilters.gender.includes(g)} onChange={() => handleArrayToggle('demographicFilters', 'gender', g)} /> {g}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="rc-form-group">
+                <label className="rc-label">Race / Ethnicity</label>
+                <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
+                  {['Asian', 'Black', 'Hispanic', 'White', 'Other'].map(r => (
+                    <label key={r} style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer'}}>
+                      <input type="checkbox" checked={formData.demographicFilters.raceEthnicity.includes(r)} onChange={() => handleArrayToggle('demographicFilters', 'raceEthnicity', r)} /> {r}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rc-form-group">
+              <label className="rc-label">Additional Demographic Notes</label>
+              <input type="text" className="rc-input" placeholder="Any specific requirements..." value={formData.demographicFilters.customNotes} onChange={(e) => handleNestedChange('demographicFilters', 'customNotes', e.target.value)} />
+            </div>
+          </section>
+
+          {/* Section: Data Collection Consent */}
+          <section className="rc-section">
+            <div className="rc-section-header">
+              <span className="material-icons-round rc-section-icon">dataset</span>
+              <span>Data Collection Consent</span>
+            </div>
+            <p className="rc-subtitle" style={{marginTop: '-1rem', marginBottom: '1rem'}}>Select what participant information to collect during gameplay.</p>
+
+            <div className="rc-form-group">
+               <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  {Object.keys(formData.dataCollectionConfig).map(k => (
+                    <label key={k} style={{textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#0f172a', fontWeight: 500, cursor: 'pointer'}}>
+                      <input type="checkbox" style={{width: '18px', height: '18px', accentColor: '#0ea5e9'}} checked={formData.dataCollectionConfig[k]} onChange={(e) => handleNestedChange('dataCollectionConfig', k, e.target.checked)} /> {k.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                  ))}
+               </div>
+            </div>
+          </section>
+
+          {/* Section: IRB Approval */}
+          <section className="rc-section">
+            <div className="rc-section-header">
+              <span className="material-icons-round rc-section-icon">gavel</span>
+              <span>IRB Approval</span>
+            </div>
+
+             <div className="rc-form-group">
+                <label style={{fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#0f172a', cursor: 'pointer'}}>
+                  <input type="checkbox" style={{width: '20px', height: '20px', accentColor: '#0ea5e9'}} checked={formData.irbRequired} onChange={handleChange} name="irbRequired" /> 
+                  IRB Approval Required for this study
+                </label>
+             </div>
+
+             {formData.irbRequired && (
+               <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                 <div className="rc-form-row">
+                    <div className="rc-form-group">
+                      <label className="rc-label">IRB Protocol Number *</label>
+                      <input type="text" className="rc-input" name="irbNumber" value={formData.irbNumber} onChange={handleChange} required={formData.irbRequired} />
+                    </div>
+                    <div className="rc-form-group">
+                      <label className="rc-label">Upload IRB Document (PDF) *</label>
+                      <div className="rc-upload-area" onClick={() => document.getElementById('irb-upload').click()} style={{padding: '1rem'}}>
+                        <span className="material-icons-round" style={{color: '#94a3b8'}}>upload_file</span>
+                        <p style={{ margin: 0, fontSize: '0.85rem' }}>{formData.irbDocument ? formData.irbDocument.name : "Click to select"}</p>
+                        <input id="irb-upload" type="file" name="irbDocument" accept=".pdf" onChange={handleChange} style={{ display: 'none' }} required={formData.irbRequired && !formData.irbDocument} />
+                      </div>
+                    </div>
+                 </div>
+                 <div className="rc-form-group" style={{marginBottom: 0}}>
+                    <label style={{fontSize: '0.9rem', color: '#334155', display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'flex-start'}}>
+                      <input type="checkbox" required={formData.irbRequired} name="irbAgreement" checked={formData.irbAgreement} onChange={handleChange} style={{marginTop: '3px', accentColor: '#0ea5e9'}} />
+                      I confirm this study has received IRB approval and complies with ethical research standards.
+                    </label>
+                 </div>
+               </div>
+             )}
           </section>
 
           {/* Section 3: AI Configuration */}
@@ -361,9 +511,16 @@ export default function RCreateProj({ onSuccess }) {
           </div>
 
           <div className="rc-summary-item">
-            <div className="rc-summary-label">Age Group</div>
-            <div className={`rc-summary-value ${formData.ageGroup ? 'filled' : ''}`}>
-              {formData.ageGroup || "Not selected"}
+            <div className="rc-summary-label">Age Target</div>
+            <div className="rc-summary-value filled">
+              {formData.demographicFilters.minAge} - {formData.demographicFilters.maxAge}
+            </div>
+          </div>
+          
+          <div className="rc-summary-item">
+            <div className="rc-summary-label">IRB Status</div>
+            <div className={`rc-summary-value ${formData.irbRequired ? 'filled' : ''}`}>
+              {formData.irbRequired ? (formData.irbAgreement ? 'Approved ✅' : 'Required ⚠️') : 'Not Required'}
             </div>
           </div>
 
