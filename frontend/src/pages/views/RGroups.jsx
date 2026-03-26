@@ -14,9 +14,9 @@ export default function RGroups({ onViewProject }) {
 
   async function fetchMyGroups() {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/groups/my-groups", {
-        headers: { Authorization: `Bearer ${token}` }
+            const res = await fetch("http://localhost:5000/groups/my-groups", {
+      credentials: "include",
+        headers: {}
       });
       if (res.ok) {
         const data = await res.json();
@@ -35,13 +35,12 @@ export default function RGroups({ onViewProject }) {
     if (!name) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/groups", {
+            const res = await fetch("http://localhost:5000/groups", {
+      credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+},
         body: JSON.stringify({ name, description: "Created via Dashboard" })
       });
 

@@ -6,18 +6,19 @@ const AuthContext = createContext({});
 // 2. Export the provider (for main.jsx)
 export const AuthProvider = ({ children }) => {
     const [auth, setAuth] = useState(() => {
-        const token = localStorage.getItem("token");
+        const isAuthenticated = localStorage.getItem("isAuthenticated");
         const role = localStorage.getItem("role");
-        return token ? { token, role } : {};
+        return isAuthenticated === 'true' ? { isAuthenticated: true, role } : {};
     });
 
     useEffect(() => {
-        if (auth?.token) {
-            localStorage.setItem("token", auth.token);
+        if (auth?.isAuthenticated) {
+            localStorage.setItem("isAuthenticated", "true");
             localStorage.setItem("role", auth.role);
         } else {
-            localStorage.removeItem("token");
+            localStorage.removeItem("isAuthenticated");
             localStorage.removeItem("role");
+            localStorage.removeItem("token");
         }
     }, [auth]);
 

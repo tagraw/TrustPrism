@@ -12,8 +12,7 @@ export default function TicketCreate({ onClose, onCreated, prefilledGameId }) {
     const [games, setGames] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
-    const token = localStorage.getItem("token");
-
+    
     useEffect(() => {
         // Fetch games for the dropdown
         async function fetchGames() {
@@ -21,7 +20,8 @@ export default function TicketCreate({ onClose, onCreated, prefilledGameId }) {
                 const role = localStorage.getItem("role");
                 const endpoint = role === "admin" ? "/admin/games" : "/projects";
                 const res = await fetch(`${API}${endpoint}`, {
-                    headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                    headers: {}
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -46,11 +46,11 @@ export default function TicketCreate({ onClose, onCreated, prefilledGameId }) {
 
         try {
             const res = await fetch(`${API}/api/tickets`, {
+      credentials: "include",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({
                     title: title.trim(),
                     description: description.trim(),

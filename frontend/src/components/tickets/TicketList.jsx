@@ -9,8 +9,7 @@ export default function TicketList({ onSelectTicket, gameId, role }) {
     const [filterStatus, setFilterStatus] = useState("");
     const [filterPriority, setFilterPriority] = useState("");
     const [filterGame, setFilterGame] = useState(gameId || "");
-    const token = localStorage.getItem("token");
-
+    
     useEffect(() => {
         fetchTickets();
     }, [filterStatus, filterPriority, filterGame]);
@@ -24,7 +23,8 @@ export default function TicketList({ onSelectTicket, gameId, role }) {
             if (filterGame) params.set("game_id", filterGame);
 
             const res = await fetch(`${API}/api/tickets?${params}`, {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setTickets(await res.json());
         } catch (err) {

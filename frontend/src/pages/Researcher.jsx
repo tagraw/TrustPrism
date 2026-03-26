@@ -38,9 +38,9 @@ export default function Researcher() {
     // If it's a string ID (from groups view), fetch the full project object
     if (typeof projectOrId === 'string') {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`http://localhost:5000/projects/${projectOrId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+                const res = await fetch(`http://localhost:5000/projects/${projectOrId}`, {
+      credentials: "include",
+          headers: {}
         });
         if (res.ok) {
           setModalProject(await res.json());

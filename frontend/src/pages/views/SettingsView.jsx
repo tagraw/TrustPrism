@@ -17,9 +17,12 @@ export default function SettingsView() {
       try {
         // Fetch Profile, Emails, and Consents in parallel
         const [profRes, emailRes, consentsRes] = await Promise.all([
-          fetch(`${API_URL}/auth/profile-stats`, { headers: { Authorization: `Bearer ${auth.token}` } }),
-          fetch(`${API_URL}/auth/settings/emails`, { headers: { Authorization: `Bearer ${auth.token}` } }),
-          fetch(`${API_URL}/participant/my-consents`, { headers: { Authorization: `Bearer ${auth.token}` } })
+          fetch(`${API_URL}/auth/profile-stats`, {
+      credentials: "include", headers: {} }),
+          fetch(`${API_URL}/auth/settings/emails`, {
+      credentials: "include", headers: {} }),
+          fetch(`${API_URL}/participant/my-consents`, {
+      credentials: "include", headers: {} })
         ]);
         const profData = await profRes.json();
         const emailData = await emailRes.json();
@@ -41,8 +44,9 @@ export default function SettingsView() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     const res = await fetch(`${API_URL}/auth/settings/profile`, {
+      credentials: "include",
       method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+      headers: { "Content-Type": "application/json",},
       body: JSON.stringify(profile)
     });
     if (res.ok) alert("Profile updated!");
@@ -51,16 +55,19 @@ export default function SettingsView() {
   const handleAddEmail = async () => {
     if (!newEmail) return;
     const res = await fetch(`${API_URL}/auth/settings/emails`, {
+      credentials: "include",
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+      headers: { "Content-Type": "application/json",},
       body: JSON.stringify({ email: newEmail })
     });
     if (res.ok) {
       setNewEmail("");
       try {
         const [profRes, emailRes] = await Promise.all([
-          fetch(`${API_URL}/auth/profile-stats`, { headers: { Authorization: `Bearer ${auth.token}` } }),
-          fetch(`${API_URL}/auth/settings/emails`, { headers: { Authorization: `Bearer ${auth.token}` } })
+          fetch(`${API_URL}/auth/profile-stats`, {
+      credentials: "include", headers: {} }),
+          fetch(`${API_URL}/auth/settings/emails`, {
+      credentials: "include", headers: {} })
         ]);
         const profData = await profRes.json();
         const emailData = await emailRes.json();

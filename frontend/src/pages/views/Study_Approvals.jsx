@@ -25,9 +25,9 @@ const StudyApprovals = ({ openGameId, onGameOpened }) => {
 
     const fetchGames = async () => {
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:5000/admin/games", {
-                headers: { Authorization: `Bearer ${token}` }
+                        const res = await fetch("http://localhost:5000/admin/games", {
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) {
                 setGames(await res.json());

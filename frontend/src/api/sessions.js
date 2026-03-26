@@ -2,6 +2,7 @@ const API_URL = "http://127.0.0.1:5000";
 
 export async function startSession(token, experimentType) {
   const res = await fetch(`${API_URL}/sessions`, {
+      credentials: "include",
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
@@ -14,6 +15,7 @@ export async function startSession(token, experimentType) {
 
 export async function logInteraction(token, interactionData) {
   const res = await fetch(`${API_URL}/sessions/interactions`, {
+      credentials: "include",
     method: "POST",
     headers: { 
       "Content-Type": "application/json",

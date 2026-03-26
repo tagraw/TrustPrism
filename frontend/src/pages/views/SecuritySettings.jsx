@@ -26,12 +26,12 @@ export default function SecuritySettings() {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [error, setError] = useState(null);
-    const token = localStorage.getItem("token");
-
+    
     // Load settings from backend on mount
     useEffect(() => {
         fetch("http://localhost:5000/admin/settings", {
-            headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+            headers: {}
         })
             .then(r => r.json())
             .then(data => { setSettings({ ...DEFAULT_SETTINGS, ...data }); setLoading(false); })
@@ -49,8 +49,9 @@ export default function SecuritySettings() {
         setError(null);
         try {
             const res = await fetch("http://localhost:5000/admin/settings", {
+      credentials: "include",
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json",},
                 body: JSON.stringify(settings)
             });
             if (!res.ok) throw new Error("Failed to save");
@@ -67,8 +68,9 @@ export default function SecuritySettings() {
         setSaving(true);
         try {
             const res = await fetch("http://localhost:5000/admin/settings", {
+      credentials: "include",
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json",},
                 body: JSON.stringify(DEFAULT_SETTINGS)
             });
             if (res.ok) {

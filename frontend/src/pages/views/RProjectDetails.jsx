@@ -22,9 +22,9 @@ export default function RProjectDetails({ projectId, goBack }) {
 
     async function fetchTickets() {
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/api/tickets?game_id=${projectId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                        const res = await fetch(`http://localhost:5000/api/tickets?game_id=${projectId}`, {
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setTickets(await res.json());
         } catch (e) { console.error(e); }
@@ -32,9 +32,9 @@ export default function RProjectDetails({ projectId, goBack }) {
 
     async function fetchProject() {
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                        const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) {
                 const data = await res.json();
@@ -49,13 +49,12 @@ export default function RProjectDetails({ projectId, goBack }) {
     async function updateStatus(status) {
         if (!confirm(`Are you sure you want to mark this as ${status}?`)) return;
         try {
-            const token = localStorage.getItem("token");
-            await fetch(`http://localhost:5000/projects/${projectId}`, {
+                        await fetch(`http://localhost:5000/projects/${projectId}`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ status })
             });
             fetchProject();
@@ -68,13 +67,12 @@ export default function RProjectDetails({ projectId, goBack }) {
         if (!stagingUrl.trim()) return;
         setSavingStagingUrl(true);
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
+                        const res = await fetch(`http://localhost:5000/projects/${projectId}`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ staging_url: stagingUrl.trim() })
             });
             if (res.ok) {

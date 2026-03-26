@@ -25,24 +25,25 @@ export default function Admin() {
   const [games, setGames] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    console.log("Admin Page Token:", token); // DEBUG
+        console.log("Admin Page Token:", token); // DEBUG
 
     if (!token) {
       console.error("No token found, skipping fetch");
       return;
     }
 
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = {};
 
     // 1. Fetch Stats
-    fetch("http://localhost:5000/admin/stats", { headers })
+    fetch("http://localhost:5000/admin/stats", {
+      credentials: "include", headers })
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error("Failed to load stats", err));
 
     // 2. Fetch Recent Users (re-using users endpoint)
-    fetch("http://localhost:5000/admin/users", { headers })
+    fetch("http://localhost:5000/admin/users", {
+      credentials: "include", headers })
       .then(res => res.json())
       .then(users => {
         if (Array.isArray(users)) {
@@ -52,7 +53,8 @@ export default function Admin() {
       .catch(err => console.error("Failed to load users", err));
 
     // 3. Fetch Games
-    fetch("http://localhost:5000/admin/games", { headers })
+    fetch("http://localhost:5000/admin/games", {
+      credentials: "include", headers })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

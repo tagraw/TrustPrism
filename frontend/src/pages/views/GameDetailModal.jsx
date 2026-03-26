@@ -19,8 +19,7 @@ const GameDetailModal = ({ game, onClose }) => {
     const [tickets, setTickets] = useState([]);
     const [showCreateTicket, setShowCreateTicket] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState(null);
-    const token = localStorage.getItem("token");
-
+    
     // Decode current user from token
     const currentUser = (() => {
         try {
@@ -37,7 +36,8 @@ const GameDetailModal = ({ game, onClose }) => {
     async function fetchTickets() {
         try {
             const res = await fetch(`${API}/api/tickets?game_id=${game.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setTickets(await res.json());
         } catch (err) { console.error(err); }
@@ -48,11 +48,11 @@ const GameDetailModal = ({ game, onClose }) => {
     const handleMarkPendingReview = async () => {
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/status`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ status: "pending_review" })
             });
             if (res.ok) {
@@ -70,7 +70,8 @@ const GameDetailModal = ({ game, onClose }) => {
     const fetchApiKeys = async () => {
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/api-keys`, {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setApiKeys(await res.json());
         } catch (err) { console.error(err); }
@@ -80,8 +81,9 @@ const GameDetailModal = ({ game, onClose }) => {
         setGeneratingKey(true);
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/generate-key`, {
+      credentials: "include",
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` }
+                headers: {}
             });
             if (res.ok) {
                 const data = await res.json();
@@ -103,11 +105,11 @@ const GameDetailModal = ({ game, onClose }) => {
         setSavingStagingUrl(true);
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/staging-url`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ staging_url: stagingUrl.trim() })
             });
             if (res.ok) {
@@ -124,11 +126,11 @@ const GameDetailModal = ({ game, onClose }) => {
         setPublishing(true);
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${game.id}/status`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ status: "published", production_url: productionUrl })
             });
             if (res.ok) {

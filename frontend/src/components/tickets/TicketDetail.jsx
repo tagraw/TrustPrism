@@ -8,8 +8,7 @@ export default function TicketDetail({ ticketId, onClose, role }) {
     const [loading, setLoading] = useState(true);
     const [replyText, setReplyText] = useState("");
     const [sending, setSending] = useState(false);
-    const token = localStorage.getItem("token");
-
+    
     useEffect(() => {
         if (ticketId) fetchTicket();
     }, [ticketId]);
@@ -18,7 +17,8 @@ export default function TicketDetail({ ticketId, onClose, role }) {
         setLoading(true);
         try {
             const res = await fetch(`${API}/api/tickets/${ticketId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setTicket(await res.json());
         } catch (err) {
@@ -32,11 +32,11 @@ export default function TicketDetail({ ticketId, onClose, role }) {
         setSending(true);
         try {
             const res = await fetch(`${API}/api/tickets/${ticketId}/messages`, {
+      credentials: "include",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ message: replyText.trim() })
             });
             if (res.ok) {
@@ -53,11 +53,11 @@ export default function TicketDetail({ ticketId, onClose, role }) {
     async function updateStatus(newStatus) {
         try {
             const res = await fetch(`${API}/api/tickets/${ticketId}/status`, {
+      credentials: "include",
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ status: newStatus })
             });
             if (res.ok) {
@@ -72,11 +72,11 @@ export default function TicketDetail({ ticketId, onClose, role }) {
     async function assignToSelf() {
         try {
             const res = await fetch(`${API}/api/tickets/${ticketId}/assign`, {
+      credentials: "include",
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                }
+}
             });
             if (res.ok) {
                 const updated = await res.json();

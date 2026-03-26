@@ -44,8 +44,8 @@ export default function Register() {
         terms_accepted: true,
       });
 
-      // Save token/role if your backend returns it
-      if (res.token) localStorage.setItem("token", res.token);
+      // Save auth status locally
+      localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("role", role); // store role locally
 
       // Redirect based on role

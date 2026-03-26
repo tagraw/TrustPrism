@@ -14,9 +14,9 @@ export default function RDataInsights() {
   useEffect(() => {
     async function fetchGames() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/projects?status=published", {
-          headers: { Authorization: `Bearer ${token}` }
+                const res = await fetch("http://localhost:5000/projects?status=published", {
+      credentials: "include",
+          headers: {}
         });
         if (res.ok) setPublishedGames(await res.json());
       } catch (e) { console.error(e); }
@@ -31,11 +31,12 @@ export default function RDataInsights() {
 
     async function fetchData() {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      try {
+            try {
         const [statsRes, logsRes] = await Promise.all([
-          fetch(`http://localhost:5000/insights/stats?gameId=${selectedGame.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`http://localhost:5000/insights/logs?gameId=${selectedGame.id}&limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+          fetch(`http://localhost:5000/insights/stats?gameId=${selectedGame.id}`, {
+      credentials: "include", headers: {} }),
+          fetch(`http://localhost:5000/insights/logs?gameId=${selectedGame.id}&limit=50`, {
+      credentials: "include", headers: {} })
         ]);
 
         if (statsRes.ok) setStats(await statsRes.json());
@@ -52,9 +53,9 @@ export default function RDataInsights() {
   const handleExport = async (format) => {
     if (!selectedGame) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/insights/${selectedGame.id}/export?format=${format}`, {
-        headers: { Authorization: `Bearer ${token}` }
+            const res = await fetch(`http://localhost:5000/insights/${selectedGame.id}/export?format=${format}`, {
+      credentials: "include",
+        headers: {}
       });
       if (res.ok) {
         const blob = await res.blob();

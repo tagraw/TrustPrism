@@ -11,9 +11,9 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
   useEffect(() => {
     async function fetchStats() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/dashboard/stats", {
-          headers: { Authorization: `Bearer ${token}` }
+                const res = await fetch("http://localhost:5000/dashboard/stats", {
+      credentials: "include",
+          headers: {}
         });
         if (res.ok) {
           const data = await res.json();
@@ -63,9 +63,9 @@ export default function RDashboard({ setActiveView, onViewInsights, onViewProjec
           />
           <Notifications onOpenProject={async (gameId) => {
             try {
-              const token = localStorage.getItem("token");
-              const res = await fetch(`http://localhost:5000/dashboard/stats`, {
-                headers: { Authorization: `Bearer ${token}` }
+                            const res = await fetch(`http://localhost:5000/dashboard/stats`, {
+      credentials: "include",
+                headers: {}
               });
               if (res.ok) {
                 const data = await res.json();

@@ -14,12 +14,12 @@ import { useContext, useEffect } from "react";
 export default function App() {
     const { setAuth } = useContext(AuthContext);
     useEffect(() => {
-    const token = localStorage.getItem("token");
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
     const role = localStorage.getItem("role");
 
-    if (token && role) {
+    if (isAuthenticated === 'true' && role) {
       // Optionally: Verify token validity with a 'me' or 'validate' endpoint here
-      setAuth({ token, role });
+      setAuth({ isAuthenticated: true, role });
     }
   }, [setAuth]);
   return (

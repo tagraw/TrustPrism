@@ -24,8 +24,8 @@ export default function User() {
     if (!auth.token) return;
 
     fetch("http://127.0.0.1:5000/auth/profile-stats", {
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${auth.token}`,
       },
     })
       .then((res) => res.json())

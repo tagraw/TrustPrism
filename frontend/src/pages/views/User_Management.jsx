@@ -16,8 +16,7 @@ const UserManagement = () => {
     }, []);
 
     const fetchUsers = async () => {
-        const token = localStorage.getItem("token");
-        if (!token) {
+                if (!token) {
             console.error("No token found for user management");
             setLoading(false);
             return;
@@ -25,7 +24,8 @@ const UserManagement = () => {
 
         try {
             const res = await fetch("http://localhost:5000/admin/users", {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) {
                 const data = await res.json();
@@ -41,10 +41,11 @@ const UserManagement = () => {
     const handleRoleUpdate = async () => {
         try {
             const res = await fetch(`http://localhost:5000/admin/users/${selectedUser.id}/role`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
+token")}`
                 },
                 body: JSON.stringify({ role: formData.role })
             });
@@ -64,10 +65,11 @@ const UserManagement = () => {
         if (!window.confirm(`Are you sure you want to set this user to ${newStatus}?`)) return;
         try {
             const res = await fetch(`http://localhost:5000/admin/users/${userId}/status`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
+token")}`
                 },
                 body: JSON.stringify({ status: newStatus })
             });
@@ -84,10 +86,11 @@ const UserManagement = () => {
     const handleScopeUpdate = async () => {
         try {
             const res = await fetch(`http://localhost:5000/admin/researchers/${selectedUser.id}/scopes`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
+token")}`
                 },
                 body: JSON.stringify({ access_scopes: scopes })
             });

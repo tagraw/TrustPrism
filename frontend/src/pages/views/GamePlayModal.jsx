@@ -9,7 +9,8 @@ export default function GamePlayModal({ game, token, onClose }) {
     useEffect(() => {
         if (!game?.id) return;
         fetch(`${API}/participant/games/${game.id}/my-stats`, {
-            headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+            headers: {}
         })
             .then(r => r.json())
             .then(setStats)

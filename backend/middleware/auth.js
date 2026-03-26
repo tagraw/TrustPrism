@@ -4,15 +4,15 @@ console.log("🔥 auth middleware loaded");
 
 export async function requireAuth(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
+    let token = req.cookies?.token;
 
-    if (!authHeader) {
-      return res.status(401).json({ error: "Missing Authorization header" });
+    // Fallback for frontend clients that haven't transitioned yet (if any)
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
-    const token = authHeader.split(" ")[1];
     if (!token) {
-      return res.status(401).json({ error: "Invalid Authorization format" });
+      return res.status(401).json({ error: "Authentication token missing" });
     }
 
     if (!process.env.JWT_SECRET) {

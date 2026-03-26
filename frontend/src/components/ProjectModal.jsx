@@ -19,8 +19,7 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
     const [showCreateTicket, setShowCreateTicket] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState(null);
 
-    const token = localStorage.getItem("token");
-
+    
     // Decode current user from JWT
     const currentUser = (() => {
         try {
@@ -36,7 +35,8 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
     async function fetchTickets() {
         try {
             const res = await fetch(`${API}/api/tickets?game_id=${project.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setTickets(await res.json());
         } catch (e) { console.error(e); }
@@ -52,11 +52,11 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
         setSavingStagingUrl(true);
         try {
             const res = await fetch(`${API}/projects/${project.id}`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ staging_url: stagingUrl.trim() })
             });
             if (res.ok) {
@@ -77,11 +77,11 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
 
         try {
             const res = await fetch(`${API}/projects/${project.id}`, {
+      credentials: "include",
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ status: newStatus })
             });
 
@@ -549,8 +549,8 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                                 if (exportDateFrom) params.set('date_from', exportDateFrom);
                                                 if (exportDateTo) params.set('date_to', exportDateTo);
                                                 const res = await fetch(
-                                                    `${API}/projects/${project.id}/export?${params}`,
-                                                    { headers: { Authorization: `Bearer ${token}` } }
+                                                    `${API}/projects/${project.id}/export?${params}`, {
+      credentials: "include", headers: {} }
                                                 );
                                                 if (!res.ok) {
                                                     const err = await res.json();

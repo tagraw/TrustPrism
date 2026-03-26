@@ -15,9 +15,9 @@ const GroupManagement = () => {
 
     const fetchGroups = async () => {
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:5000/admin/groups", {
-                headers: { Authorization: `Bearer ${token}` }
+                        const res = await fetch("http://localhost:5000/admin/groups", {
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) {
                 setGroups(await res.json());
@@ -31,11 +31,11 @@ const GroupManagement = () => {
 
     const fetchResearchers = async () => {
         try {
-            const token = localStorage.getItem("token");
-            // reusing admin users endpoint to filter for researchers manually or we could add a specific endpoint
+                        // reusing admin users endpoint to filter for researchers manually or we could add a specific endpoint
             // fast approach: fetch all users and filter client side for 'researcher' role
             const res = await fetch("http://localhost:5000/admin/users", {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) {
                 const users = await res.json();
@@ -50,13 +50,12 @@ const GroupManagement = () => {
         if (!newOwnerId) return alert("Please select a new owner");
 
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/admin/groups/${transferModal.id}/transfer`, {
+                        const res = await fetch(`http://localhost:5000/admin/groups/${transferModal.id}/transfer`, {
+      credentials: "include",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ newOwnerId })
             });
 

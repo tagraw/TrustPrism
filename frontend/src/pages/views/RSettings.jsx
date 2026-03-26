@@ -22,14 +22,15 @@ export default function RSettings() {
 
   async function fetchSettings() {
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
+            const headers = {};
 
       // In a real app we might handle partial failures, but for now wrap both
       try {
         const [profileRes, emailsRes] = await Promise.all([
-          fetch("http://localhost:5000/auth/settings/profile", { headers }),
-          fetch("http://localhost:5000/auth/settings/emails", { headers })
+          fetch("http://localhost:5000/auth/settings/profile", {
+      credentials: "include", headers }),
+          fetch("http://localhost:5000/auth/settings/emails", {
+      credentials: "include", headers })
         ]);
 
         if (profileRes.ok) {
@@ -77,19 +78,18 @@ export default function RSettings() {
   const saveProfile = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token");
-      // Clean up interests before sending
+            // Clean up interests before sending
       const cleanedProfile = {
         ...profile,
         research_interests: profile.research_interests.map(s => s.trim()).filter(Boolean)
       };
 
       const res = await fetch("http://localhost:5000/auth/settings/profile", {
+      credentials: "include",
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+},
         body: JSON.stringify(cleanedProfile)
       });
       if (res.ok) alert("Profile updated successfully!");
@@ -104,13 +104,12 @@ export default function RSettings() {
     e.preventDefault();
     if (!newEmail) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/auth/settings/emails", {
+            const res = await fetch("http://localhost:5000/auth/settings/emails", {
+      credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+},
         body: JSON.stringify({ email: newEmail })
       });
       if (res.ok) {

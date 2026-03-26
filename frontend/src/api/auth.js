@@ -4,6 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000"; // make
 export async function login({email, password}) {
   try {
     const res = await fetch(`${API_URL}/auth/login`, {
+      credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -24,6 +25,7 @@ export async function login({email, password}) {
 export async function register(data) {
   try {
     const res = await fetch(`${API_URL}/auth/register`, {
+      credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

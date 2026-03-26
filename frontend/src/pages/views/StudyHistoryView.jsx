@@ -14,10 +14,12 @@ export default function StudyHistoryView() {
 
     Promise.all([
       fetch(`${API}/participant/my-stats`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
+      credentials: "include",
+        headers: {},
       }).then((r) => r.json()),
       fetch(`${API}/participant/games`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
+      credentials: "include",
+        headers: {},
       }).then((r) => r.json()),
     ])
       .then(([stats, allGames]) => {

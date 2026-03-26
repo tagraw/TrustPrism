@@ -1,50 +1,28 @@
-import jwtDecode from "jwt-decode";
-export const getAuthToken = () => {
-  return localStorage.getItem("token");
-};
-
 export const getAuthRole = () => {
   return localStorage.getItem("role");
 };
 
-export const logout = () => {
-  localStorage.removeItem("token");
+export const logout = async () => {
+  try {
+    await fetch("http://localhost:5000/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (err) {
+    console.error("Logout failed", err);
+  }
+  localStorage.removeItem("isAuthenticated");
   localStorage.removeItem("role");
+  localStorage.removeItem("token");
   window.location.href = "/login";
 };
 
-export function getStoredUser() {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-
-  try {
-    const decoded = jwtDecode(token);
-
-    // token expired?
-    if (decoded.exp * 1000 < Date.now()) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      return null;
-    }
-
-    return {
-      id: decoded.id,
-      role: decoded.role,
-      token
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function authFetch(url, options = {}) {
-  const token = localStorage.getItem("token");
-
   return fetch(url, {
     ...options,
+    credentials: "include",
     headers: {
       ...options.headers,
-      Authorization: token ? `Bearer ${token}` : "",
       "Content-Type": "application/json"
     }
   });

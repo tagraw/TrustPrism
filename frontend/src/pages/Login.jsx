@@ -28,14 +28,14 @@ export default function Login() {
     }
 
     try {
-      const { token, role } = await login({
+      const { role } = await login({
         email: email.trim(),
         password: password.trim(),
       });
 
-      localStorage.setItem("token", token);
+      localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("role", role);
-      setAuth({ token, role });
+      setAuth({ isAuthenticated: true, role });
 
       if (role === "admin") navigate("/admin");
       else if (role === "researcher") navigate("/researcher");

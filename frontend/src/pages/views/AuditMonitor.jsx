@@ -6,12 +6,12 @@ export default function AuditMonitor() {
     const [activeSection, setActiveSection] = useState("spikes");
     const [flaggingId, setFlaggingId] = useState(null);
     const [disablingId, setDisablingId] = useState(null);
-    const token = localStorage.getItem("token");
-
+    
     const fetchAudit = async () => {
         try {
             const res = await fetch("http://localhost:5000/admin/audit", {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setData(await res.json());
         } catch (err) { console.error(err); }
@@ -24,8 +24,9 @@ export default function AuditMonitor() {
         setFlaggingId(logId);
         try {
             await fetch(`http://localhost:5000/admin/ai-logs/${logId}/flag`, {
+      credentials: "include",
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json",},
                 body: JSON.stringify({ flagged, flag_reason: reason })
             });
             fetchAudit();
@@ -38,8 +39,9 @@ export default function AuditMonitor() {
         setDisablingId(gameId);
         try {
             const res = await fetch(`http://localhost:5000/admin/games/${gameId}/disable`, {
+      credentials: "include",
                 method: "PUT",
-                headers: { Authorization: `Bearer ${token}` }
+                headers: {}
             });
             if (res.ok) { alert("Game disabled."); fetchAudit(); }
         } catch (err) { console.error(err); }
@@ -50,8 +52,9 @@ export default function AuditMonitor() {
         if (!confirm("Revoke this API key?")) return;
         try {
             const res = await fetch(`http://localhost:5000/admin/api-keys/${keyId}`, {
+      credentials: "include",
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` }
+                headers: {}
             });
             if (res.ok) { alert("API key revoked."); fetchAudit(); }
         } catch (err) { console.error(err); }

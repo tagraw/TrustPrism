@@ -159,6 +159,14 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Add the initial email to the user_emails table
     await pool.query(
       `INSERT INTO user_emails (user_id, email, is_primary, is_verified, verification_token)
@@ -237,7 +245,14 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
       { expiresIn }
     );
 
-    res.json({ token, role: user.role });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: settings.sessionTimeout * 60 * 1000
+    });
+
+    res.json({ role: user.role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
@@ -496,6 +511,16 @@ router.put("/settings/password", requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Failed to update password" });
   }
+});
+
+// Logout endpoint
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  res.json({ message: "Logged out successfully" });
 });
 
 export default router;

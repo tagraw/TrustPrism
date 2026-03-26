@@ -9,8 +9,7 @@ export default function Notifications({ onOpenProject }) {
     const [showDropdown, setShowDropdown] = useState(false);
     const socketRef = useRef(null);
     const dropdownRef = useRef(null);
-    const token = localStorage.getItem("token");
-
+    
     // Decode user id from token
     const userId = (() => {
         try {
@@ -52,7 +51,8 @@ export default function Notifications({ onOpenProject }) {
     async function fetchNotifications() {
         try {
             const res = await fetch("http://localhost:5000/notifications", {
-                headers: { Authorization: `Bearer ${token}` }
+      credentials: "include",
+                headers: {}
             });
             if (res.ok) setNotifications(await res.json());
         } catch (e) { console.error(e); }
@@ -61,8 +61,9 @@ export default function Notifications({ onOpenProject }) {
     async function markAsRead(id) {
         try {
             await fetch(`http://localhost:5000/notifications/${id}/read`, {
+      credentials: "include",
                 method: "PUT",
-                headers: { Authorization: `Bearer ${token}` }
+                headers: {}
             });
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, is_read: true } : n)

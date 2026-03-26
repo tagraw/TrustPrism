@@ -33,7 +33,8 @@ export default function DashboardView({
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
 
       const res = await fetch(`${API}/participant/games?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+        headers: {},
       });
       if (res.ok) setGames(await res.json());
     } catch (err) {
@@ -46,7 +47,8 @@ export default function DashboardView({
   const fetchConsents = async () => {
     try {
       const res = await fetch(`${API}/participant/consents`, {
-        headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+        headers: {},
       });
       if (res.ok) {
         const ids = await res.json();
@@ -121,10 +123,10 @@ export default function DashboardView({
     // Record consent in the backend
     try {
       await fetch(`${API}/participant/consents`, {
+      credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           gameId: consentGame.id,

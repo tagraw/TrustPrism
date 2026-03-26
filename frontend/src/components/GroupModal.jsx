@@ -19,12 +19,13 @@ export default function GroupModal({ group, onClose, onViewProject }) {
     async function fetchGroupData() {
         setLoading(true);
         try {
-            const token = localStorage.getItem("token");
-
+            
             // Parallel fetch
             const [detailsRes, projectsRes] = await Promise.all([
-                fetch(`http://localhost:5000/groups/${group.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-                fetch(`http://localhost:5000/groups/${group.id}/games`, { headers: { Authorization: `Bearer ${token}` } })
+                fetch(`http://localhost:5000/groups/${group.id}`, {
+      credentials: "include", headers: {} }),
+                fetch(`http://localhost:5000/groups/${group.id}/games`, {
+      credentials: "include", headers: {} })
             ]);
 
             if (detailsRes.ok) setDetails(await detailsRes.json());
@@ -36,13 +37,12 @@ export default function GroupModal({ group, onClose, onViewProject }) {
     async function sendInvite() {
         if (!inviteEmail) return;
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://localhost:5000/groups/${group.id}/invite`, {
+                        const res = await fetch(`http://localhost:5000/groups/${group.id}/invite`, {
+      credentials: "include",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
+},
                 body: JSON.stringify({ email: inviteEmail, role: inviteRole })
             });
             if (res.ok) {

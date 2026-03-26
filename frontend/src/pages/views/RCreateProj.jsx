@@ -53,9 +53,9 @@ export default function RCreateProj({ onSuccess }) {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/groups/my-groups", {
-          headers: { Authorization: `Bearer ${token}` }
+                const res = await fetch("http://localhost:5000/groups/my-groups", {
+      credentials: "include",
+          headers: {}
         });
         if (res.ok) {
           const data = await res.json();
@@ -132,10 +132,10 @@ export default function RCreateProj({ onSuccess }) {
     });
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/projects", {
+            const res = await fetch("http://localhost:5000/projects", {
+      credentials: "include",
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {},
         body: data
       });
 
