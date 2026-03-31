@@ -60,3 +60,24 @@ export const sendPasswordResetEmail = async (email, token) => {
 
     return transporter.sendMail(mailOptions);
 };
+
+export const sendMfaEmail = async (email, mfaCode) => {
+    const mailOptions = {
+        from: `"TrustPrism Security" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "TrustPrism Admin Login - Your MFA Code",
+        html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; color: #333; padding: 2rem;">
+            <h2>Admin Privileged Login Request</h2>
+            <p>You or someone else has attempted to log into a privileged TrustPrism account.</p>
+            <p>Your one-time Hard Token PIN is:</p>
+            <div style="font-size: 2rem; letter-spacing: 4px; font-weight: bold; background: #f4f4f4; padding: 1rem; margin: 1rem auto; width: 200px; border-radius: 8px;">
+                ${mfaCode}
+            </div>
+            <p>This code will expire in 10 minutes. If this was not you, please secure your account immediately.</p>
+        </div>
+        `,
+    };
+
+    return transporter.sendMail(mailOptions);
+};

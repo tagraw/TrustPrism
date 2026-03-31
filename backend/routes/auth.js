@@ -6,12 +6,16 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { loginLimiter, signupLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
 import { loginValidation, signupValidation } from "../middleware/validation.js";
 import crypto from "crypto";
-import { sendVerificationEmail } from "../util/email.js";
+import { sendVerificationEmail, sendMfaEmail } from "../util/email.js";
 import { sendPasswordResetEmail } from "../util/email.js";
 import { body, validationResult } from "express-validator";
 import { validatePassword, checkLockout, recordLoginAttempt, getSettings } from "../util/settings.js";
+import { logSIEMEvent } from "../util/siem.js";
 
 const router = express.Router();
+
+// TACC Sanctioned Countries of Concern List
+const COUNTRIES_OF_CONCERN = ["CU", "IR", "KP", "SY", "RU"];
 
 /**
  * REGISTER
@@ -27,8 +31,15 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
     dob,
     groupId,
     createGroupName,
-    terms_accepted
+    terms_accepted,
+    country
   } = req.body;
+
+  // NIST 800-171: TACC Countries of Concern constraint
+  if (country && COUNTRIES_OF_CONCERN.includes(country.toUpperCase())) {
+    await logSIEMEvent(null, "REGISTER_REJECTED_COC", req.ip, { email, country });
+    return res.status(403).json({ error: "Access denied due to Country of Concern regulations." });
+  }
 
 
   if (!["user", "researcher"].includes(role)) {
@@ -79,7 +90,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
     // 3. Prepare Query
     const dobParam = role === "user" ? ", dob" : "";
-    const dobVal = role === "user" ? ", $8" : "";
+    const dobVal = role === "user" ? ", $9" : "";
     const query = `
       INSERT INTO users (
         email,
@@ -88,17 +99,18 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
         first_name,
         last_name,
         verification_token,
-        terms_accepted_at
+        terms_accepted_at,
+        country
         ${dobParam}
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7${dobVal})
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8${dobVal})
       RETURNING id, email, role
     `;
 
-    // 4. Include verificationToken and terms_accepted_at in the params array
-    const params = [email, hash, role, first_name, last_name, verificationToken, new Date()];
+    // 4. Include verificationToken, terms_accepted_at, country in the params array
+    const params = [email, hash, role, first_name, last_name, verificationToken, new Date(), (country || "US").toUpperCase()];
 
-    // If it's a user, dob becomes the 8th parameter ($8)
+    // If it's a user, dob becomes the 9th parameter ($9)
     if (role === "user") params.push(dob);
 
     const result = await pool.query(query, params);
@@ -174,6 +186,9 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
       [user.id, email, verificationToken]
     );
 
+    // Logging event
+    await logSIEMEvent(user.id, "REGISTER_SUCCESS", req.ip, { role });
+
     return res.status(201).json({
       message: "Registration successful! Please check your email to verify your account.",
       id: user.id,
@@ -218,10 +233,41 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     const user = result.rows[0];
     if (!user) {
       await recordLoginAttempt(email, req.ip, false);
+      // Wait to log SIEM because we don't have user.id, but let's log failed access via email
+      await logSIEMEvent(null, "LOGIN_FAILED", req.ip, { email, reason: "Invalid user" });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    if (user.status === "disabled") {
+      await logSIEMEvent(user.id, "LOGIN_FAILED_DISABLED", req.ip, { email });
+      return res.status(403).json({ error: "Your account has been administratively disabled." });
+    }
+
+    // ACC POLICY: 120-Days idle Suspension Check
+    if (user.last_login_at) {
+        const daysIdle = (new Date() - new Date(user.last_login_at)) / (1000 * 60 * 60 * 24);
+        if (daysIdle > 120 && user.status !== "suspended") {
+            // Force suspend
+            await pool.query("UPDATE users SET status = 'suspended', is_verified = FALSE WHERE id = $1", [user.id]);
+            await logSIEMEvent(user.id, "USER_SUSPENDED_INACTIVE", req.ip, { daysIdle });
+            
+            // Generate verification token and assign locally
+            const vToken = crypto.randomBytes(32).toString("hex");
+            await pool.query("UPDATE users SET verification_token = $1 WHERE id = $2", [vToken, user.id]);
+            await pool.query("UPDATE user_emails SET verification_token = $1, is_verified = FALSE WHERE user_id = $2 AND email = $3", [vToken, user.id, user.email]);
+
+            try { await sendVerificationEmail(user.email, vToken); } catch (e) { }
+            return res.status(403).json({ error: "Account suspended due to 120 days of inactivity. A verification email has been sent." });
+        }
+    }
+
+    if (user.status === "suspended") {
+        await logSIEMEvent(user.id, "LOGIN_FAILED_SUSPENDED", req.ip, { email });
+        return res.status(403).json({ error: "Your account is suspended. Check your email for verification instructions." });
+    }
+
     if (!user.is_verified) {
+      await logSIEMEvent(user.id, "LOGIN_FAILED_UNVERIFIED", req.ip, { email });
       return res.status(403).json({
         error: "Your email is not verified. Please check your inbox for the verification link."
       });
@@ -230,15 +276,45 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       await recordLoginAttempt(email, req.ip, false);
+      await logSIEMEvent(user.id, "LOGIN_FAILED_PASSWORD", req.ip, { email });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Successful login — record it and clear lockout concern
     await recordLoginAttempt(email, req.ip, true);
 
-    // Use session timeout from security settings
-    const settings = await getSettings();
-    const expiresIn = `${settings.sessionTimeout}m`;
+    // Hard Token Validation interception step
+    // TACC NIST Requires a Hard Token for privileged accounts. We're mocking an MFA flow here.
+    if (user.role === "admin" || user.is_tiso) {
+        // If the user hasn't supplied a code in this request, trigger it
+        const providedMfa = req.body.mfa_token;
+        if (!providedMfa) {
+             const mfaCode = Math.floor(100000 + Math.random() * 900000).toString();
+             
+             await pool.query("UPDATE users SET mfa_token = $1, mfa_token_expires = NOW() + INTERVAL '10 minutes' WHERE id = $2", [mfaCode, user.id]);
+
+             try {
+                await sendMfaEmail(email, mfaCode);
+             } catch (emailErr) {
+                console.error("MFA Email Error:", emailErr);
+             }
+
+             return res.status(202).json({ requires_mfa: true, message: "A 6-digit PIN has been transmitted." });
+        } else {
+             // Verify MFA
+             const mfaCheck = await pool.query("SELECT id FROM users WHERE id = $1 AND mfa_token = $2 AND mfa_token_expires > NOW()", [user.id, providedMfa]);
+             if (mfaCheck.rowCount === 0) {
+                 await logSIEMEvent(user.id, "MFA_FAILED", req.ip, { email });
+                 return res.status(401).json({ error: "Invalid or expired Hard Token (MFA)." });
+             }
+             // Wipe token
+             await pool.query("UPDATE users SET mfa_token = NULL, mfa_token_expires = NULL WHERE id = $1", [user.id]);
+             await logSIEMEvent(user.id, "MFA_SUCCESS", req.ip, { email });
+        }
+    }
+
+    // ACC POLICY: Force exactly 24 hours of limits.
+    const expiresIn = "24h";
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
@@ -250,10 +326,14 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: settings.sessionTimeout * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000 // Force 24 hours strictly
     });
 
-    res.json({ id: user.id, role: user.role });
+    // Mark current login activity and log event
+    await pool.query("UPDATE users SET last_login_at = NOW(), status = 'active' WHERE id = $1", [user.id]);
+    await logSIEMEvent(user.id, "LOGIN_SUCCESS", req.ip, { role: user.role });
+
+    res.json({ id: user.id, role: user.role, is_tiso: user.is_tiso });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
@@ -515,12 +595,27 @@ router.put("/settings/password", requireAuth, async (req, res) => {
 });
 
 // Logout endpoint
-router.post("/logout", (req, res) => {
+router.post("/logout", async (req, res) => {
+  // If user is logged in (has cookie), log it. Wait, the route doesn't have requireAuth, so we might need to parse.
+  // We'll just clear the cookie.
+  // Let's grab user from cookie specifically for logging logic.
+  let loggedUserId = null;
+  const tkn = req.cookies?.token;
+  if (tkn) {
+      try {
+          const payload = jwt.verify(tkn, process.env.JWT_SECRET);
+          loggedUserId = payload.id;
+      } catch (e) { }
+  }
+
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'
   });
+
+  if (loggedUserId) await logSIEMEvent(loggedUserId, "LOGOUT_SUCCESS", req.ip);
+
   res.json({ message: "Logged out successfully" });
 });
 

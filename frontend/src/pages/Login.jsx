@@ -10,6 +10,8 @@ export default function Login() {
   const { setAuth } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaToken, setMfaToken] = useState("");
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
@@ -28,11 +30,19 @@ export default function Login() {
     }
 
     try {
-      const { role, id } = await login({
+      const authData = await login({
         email: email.trim(),
         password: password.trim(),
+        mfa_token: requiresMfa ? mfaToken.trim() : undefined
       });
 
+      if (authData.requires_mfa) {
+        setRequiresMfa(true);
+        setErrors({ server: authData.message || "Please check your email/device for the MFA Hard Token PIN." });
+        return;
+      }
+
+      const { role, id } = authData;
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("role", role);
       localStorage.setItem("userId", id);
@@ -99,9 +109,23 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
+            disabled={requiresMfa}
           />
           {errors.password && (
             <span className="error-text">{errors.password}</span>
+          )}
+
+          {requiresMfa && (
+            <div style={{ marginTop: "1rem" }}>
+              <label>Hard Token (MFA) PIN</label>
+              <input
+                type="text"
+                value={mfaToken}
+                onChange={(e) => setMfaToken(e.target.value)}
+                placeholder="000000"
+                style={{ letterSpacing: "2px", textAlign: "center" }}
+              />
+            </div>
           )}
 
           {errors.server && (

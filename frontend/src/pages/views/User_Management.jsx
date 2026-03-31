@@ -155,20 +155,20 @@ const UserManagement = () => {
                             </td>
                             <td>
                                 <span className={`pill ${user.role === 'admin' ? 'purple' : user.role === 'researcher' ? 'blue' : 'gray'}`}>
-                                    {user.role}
+                                    {user.role} {user.role === 'admin' ? '(TISO)' : ''}
                                 </span>
                             </td>
                             <td className={user.is_verified ? "verified" : "pending"}>
                                 {user.is_verified ? "Verified" : "Pending"}
                             </td>
                             <td>
-                                <span className={`pill ${user.status === 'active' ? 'green' : 'red'}`}>
+                                <span className={`pill ${user.status === 'active' ? 'green' : user.status === 'suspended' ? 'yellow' : 'red'}`}>
                                     {user.status || 'active'}
                                 </span>
                             </td>
                             <td>
                                 <div className="action-buttons">
-                                    <button className="icon-btn" onClick={() => openModal('role', user)} title="Edit Role">
+                                    <button className="icon-btn" onClick={() => openModal('role', user)} title="Edit Role (TISO)">
                                         <span className="material-icons-round">manage_accounts</span>
                                     </button>
 
@@ -178,14 +178,20 @@ const UserManagement = () => {
                                         </button>
                                     )}
 
-                                    {user.status !== 'suspended' && (
-                                        <button className="icon-btn" onClick={() => handleStatusUpdate(user.id, 'suspended')} title="Suspend User">
-                                            <span className="material-icons-round red-text">block</span>
+                                    {user.status !== 'suspended' && user.status !== 'disabled' && (
+                                        <button className="icon-btn" onClick={() => handleStatusUpdate(user.id, 'suspended')} title="Suspend User (TISO)">
+                                            <span className="material-icons-round yellow-text">block</span>
                                         </button>
                                     )}
 
-                                    {user.status === 'suspended' && (
-                                        <button className="icon-btn" onClick={() => handleStatusUpdate(user.id, 'active')} title="Activate User">
+                                    {user.status !== 'disabled' && (
+                                        <button className="icon-btn" onClick={() => handleStatusUpdate(user.id, 'disabled')} title="Immediately Disable High-Risk User (TISO)">
+                                            <span className="material-icons-round red-text">gavel</span>
+                                        </button>
+                                    )}
+
+                                    {(user.status === 'suspended' || user.status === 'disabled') && (
+                                        <button className="icon-btn" onClick={() => handleStatusUpdate(user.id, 'active')} title="Re-Activate User">
                                             <span className="material-icons-round green-text">check_circle</span>
                                         </button>
                                     )}

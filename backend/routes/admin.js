@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getSettings, updateSettings } from "../util/settings.js";
+import { logSIEMEvent } from "../util/siem.js";
 
 const router = express.Router();
 
@@ -108,6 +109,7 @@ router.put("/users/:id/role", async (req, res) => {
         }
 
         await pool.query("COMMIT");
+        await logSIEMEvent(req.user.id, "ADMIN_ROLE_UDPATE", req.ip, { target_user_id: id, new_role: role });
         res.json({ message: "User role updated successfully" });
     } catch (err) {
         await pool.query("ROLLBACK");
@@ -155,6 +157,7 @@ router.put("/users/:id/status", async (req, res) => {
 
     try {
         await pool.query("UPDATE users SET status = $1 WHERE id = $2", [status, id]);
+        await logSIEMEvent(req.user.id, "ADMIN_USER_STATUS_UPDATE", req.ip, { target_user_id: id, new_status: status });
         res.json({ message: "User status updated successfully" });
     } catch (err) {
         console.error(err);
@@ -228,6 +231,7 @@ router.post("/groups/:groupId/transfer", async (req, res) => {
         }
 
         await pool.query("COMMIT");
+        await logSIEMEvent(req.user.id, "ADMIN_GROUP_TRANSFER", req.ip, { group_id: groupId, new_owner_id: newOwnerId });
         res.json({ message: "Group ownership transferred successfully" });
     } catch (err) {
         await pool.query("ROLLBACK");
