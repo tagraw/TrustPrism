@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { logSIEMEvent } from "../util/siem.js";
 
 const router = express.Router();
 
@@ -220,6 +221,11 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
         // Emit real-time update for status changes
         req.io.emit("ticket_status_update", { ticket_id: id, status });
 
+        // TACC 3.03.03 — Category 13: Managing Application Processes
+        await logSIEMEvent(userId, "ADMIN_TICKET_STATUS_CHANGED", req.ip, {
+            ticket_id: id, new_status: status, ticket_title: ticket.title
+        });
+
         res.json(ticket);
     } catch (err) {
         console.error("Update status error:", err);
@@ -255,6 +261,11 @@ router.patch("/:id/assign", requireAuth, async (req, res) => {
                 { ticket_id: id, game_id: ticket.game_id }
             );
         }
+
+        // TACC 3.03.03 — Category 2: Privileged Account Activity
+        await logSIEMEvent(userId, "ADMIN_TICKET_ASSIGNED", req.ip, {
+            ticket_id: id, ticket_title: ticket.title, assigned_to: userId
+        });
 
         res.json(ticket);
     } catch (err) {

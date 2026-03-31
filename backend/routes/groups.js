@@ -1,7 +1,7 @@
 import express from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-
+import { logSIEMEvent } from "../util/siem.js";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
 
@@ -72,6 +72,9 @@ router.post(
         [researcherId, group.id]
       );
 
+      // TACC 3.03.03 — Category 3: User & Group Account Management
+      await logSIEMEvent(researcherId, "GROUP_CREATED", req.ip, { group_id: group.id, name });
+
       res.status(201).json(group);
     } catch (err) {
       console.error(err);
@@ -105,6 +108,9 @@ router.post("/:groupId/join", requireAuth, requireRole("researcher"), async (req
        VALUES ($1, $2)`,
       [researcherId, groupId]
     );
+
+    // TACC 3.03.03 — Category 3: User & Group Account Management
+    await logSIEMEvent(researcherId, "GROUP_MEMBER_ADDED", req.ip, { group_id: groupId });
 
     res.json({ message: "Joined group successfully" });
   } catch (err) {

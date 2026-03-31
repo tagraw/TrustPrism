@@ -417,6 +417,9 @@ router.post("/forgot-password", passwordResetLimiter,
       // FIX: Pass ONLY the raw token to the email utility
       await sendPasswordResetEmail(email, token);
 
+      // TACC 3.03.03 — Category 7: Handling Confidential/Authentication Data
+      await logSIEMEvent(result.rows[0].id, "PASSWORD_RESET_REQUESTED", req.ip, { email });
+
       res.json({ message: "Reset email sent successfully" });
     } catch (err) {
       console.error(err);
@@ -445,6 +448,9 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
       "UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2",
       [hash, result.rows[0].id]
     );
+
+    // TACC 3.03.03 — Category 7: Handling Confidential/Authentication Data
+    await logSIEMEvent(result.rows[0].id, "PASSWORD_RESET_COMPLETED", req.ip, {});
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
@@ -552,6 +558,8 @@ router.put("/settings/profile", requireAuth, async (req, res) => {
         req.user.id
       ]
     );
+    // TACC 3.03.03 — Category 3: User & Group Account Management
+    await logSIEMEvent(req.user.id, "PROFILE_UPDATED", req.ip, { fields_updated: Object.keys(req.body) });
     res.json({ message: "Profile updated successfully" });
   } catch (err) {
     console.error(err);
@@ -587,6 +595,9 @@ router.put("/settings/password", requireAuth, async (req, res) => {
 
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, req.user.id]);
+
+    // TACC 3.03.03 — Category 7: Handling Confidential/Authentication Data
+    await logSIEMEvent(req.user.id, "PASSWORD_CHANGED_SELF", req.ip, {});
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {

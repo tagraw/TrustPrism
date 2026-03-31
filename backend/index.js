@@ -10,6 +10,7 @@ import morgan from "morgan";
 import { apiLimiter } from "./middleware/rateLimit.js";
 
 import { pool } from "./db.js";
+import { logSIEMEvent } from "./util/siem.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -132,9 +133,32 @@ app.use("/api/telemetry", telemetryRoutes);
 app.use("/api/ai", aiProxyRoutes);
 app.use("/participant", participantRoutes);
 
+// TACC 3.03.03 — Category 14: Application Failures & Resource Issues
+// Global error handler — catches all unhandled errors forwarded via next(err)
+app.use(async (err, req, res, next) => {
+  console.error("[UNHANDLED SERVER ERROR]", err);
+  try {
+    let userId = null;
+    const tkn = req.cookies?.token;
+    if (tkn) {
+      const { default: jwt } = await import("jsonwebtoken");
+      try { userId = jwt.verify(tkn, process.env.JWT_SECRET)?.id; } catch (_) {}
+    }
+    await logSIEMEvent(userId, "SYSTEM_ERROR", req.ip, {
+      method: req.method,
+      path: req.path,
+      error: err.message,
+      stack: err.stack?.split("\n").slice(0, 4).join(" | ")
+    });
+  } catch (siemErr) {
+    console.error("[SIEM ERROR in global handler]", siemErr.message);
+  }
+  res.status(500).json({ error: "Internal server error" });
+});
+
 // Catch-all unmatched route
 app.use((req, res) => {
-  console.log("⚠️ UNMATCHED ROUTE:", req.method, req.url);
+  console.log("\u26a0\ufe0f UNMATCHED ROUTE:", req.method, req.url);
   res.status(404).json({ error: "Route not found" });
 });
 const PORT = process.env.PORT || 5000;

@@ -174,7 +174,15 @@ router.put("/researchers/:id/scopes", async (req, res) => {
     const { access_scopes } = req.body;
 
     try {
+        // Capture old scopes for the audit diff
+        const old = await pool.query("SELECT access_scopes FROM researchers WHERE user_id = $1", [id]);
         await pool.query("UPDATE researchers SET access_scopes = $1 WHERE user_id = $2", [access_scopes, id]);
+        // TACC 3.03.03 — Category 4/11: Modification of / Managing Access Rights
+        await logSIEMEvent(req.user.id, "ADMIN_ACCESS_SCOPE_CHANGED", req.ip, {
+            target_user_id: id,
+            old_scopes: old.rows[0]?.access_scopes,
+            new_scopes: access_scopes
+        });
         res.json({ message: "Researcher scopes updated successfully" });
     } catch (err) {
         console.error(err);
@@ -336,6 +344,11 @@ router.put("/games/:id/status", async (req, res) => {
             });
         }
 
+        // TACC 3.03.03 — Category 13: Managing Application Processes
+        await logSIEMEvent(req.user.id, "ADMIN_GAME_STATUS_CHANGE", req.ip, {
+            game_id: id, new_status: status, production_url: production_url || null
+        });
+
         res.json({ message: "Game status updated successfully" });
     } catch (err) {
         console.error(err);
@@ -364,6 +377,9 @@ router.put("/games/:id/staging-url", async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Game not found" });
         }
+
+        // TACC 3.03.03 — Category 12: Configuration of Systems/Services
+        await logSIEMEvent(req.user.id, "ADMIN_GAME_STAGING_URL_SET", req.ip, { game_id: id, staging_url });
 
         res.json({ message: "Staging URL updated", staging_url: result.rows[0].staging_url });
     } catch (err) {
@@ -405,6 +421,11 @@ router.post("/games/:id/generate-key", async (req, res) => {
              VALUES ($1, $2, $3, 'development', $4)`,
             [gameId, keyHash, keyPrefix, adminId]
         );
+
+        // TACC 3.03.03 — Category 2/12: Privileged Account Activity / System Configuration
+        await logSIEMEvent(adminId, "ADMIN_API_KEY_GENERATED", req.ip, {
+            game_id: gameId, game_name: gameCheck.rows[0].name, key_prefix: keyPrefix, environment: "development"
+        });
 
         res.json({
             api_key: rawKey,
@@ -575,6 +596,9 @@ router.put("/games/:id/disable", async (req, res) => {
             );
         }
 
+        // TACC 3.03.03 — Category 13: Managing Application Processes
+        await logSIEMEvent(req.user.id, "ADMIN_GAME_DISABLED", req.ip, { game_id: id, game_name: game.name });
+
         res.json({ message: "Game disabled and API keys revoked", game: result.rows[0] });
     } catch (err) {
         console.error(err);
@@ -596,6 +620,10 @@ router.delete("/api-keys/:id", async (req, res) => {
             [id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: "API key not found or already revoked" });
+        // TACC 3.03.03 — Category 2/12: Privileged Account Activity / System Configuration
+        await logSIEMEvent(req.user.id, "ADMIN_API_KEY_REVOKED", req.ip, {
+            api_key_id: id, key_prefix: result.rows[0].key_prefix, game_id: result.rows[0].game_id
+        });
         res.json({ message: "API key revoked", key: result.rows[0] });
     } catch (err) {
         console.error(err);
@@ -620,15 +648,86 @@ router.get("/settings", async (req, res) => {
 /**
  * PUT /admin/settings
  * Update security settings (partial merge).
- * Body: { sessionTimeout?: number, passwordMinLength?: number, ... }
  */
 router.put("/settings", async (req, res) => {
     try {
+        const oldSettings = await getSettings();
         const updated = await updateSettings(req.body, req.user.id);
+        // TACC 3.03.03 — Category 5/12: Security Configuration / System Configuration Change
+        const changedKeys = Object.keys(req.body);
+        const diff = {};
+        changedKeys.forEach(k => { diff[k] = { from: oldSettings[k], to: updated[k] }; });
+        await logSIEMEvent(req.user.id, "ADMIN_SETTINGS_CHANGED", req.ip, { changed_fields: diff });
         res.json({ message: "Settings updated", settings: updated });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to update settings" });
+    }
+});
+
+/**
+ * GET /admin/siem-logs
+ * TACC 3.03.03 — Paginated SIEM audit log viewer for admin/TISO review.
+ * Supports filters: event_type, category, user_id, date_from, date_to, limit (max 500)
+ */
+router.get("/siem-logs", async (req, res) => {
+    const { event_type, category, user_id, date_from, date_to } = req.query;
+    const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+
+    // TACC 3.03.03 — Category 10: Privilege Access & Use — log that a privileged user accessed the audit records
+    await logSIEMEvent(req.user.id, "ADMIN_SIEM_ACCESSED", req.ip, {
+        filters: { event_type, category, user_id, date_from, date_to }, limit
+    });
+
+    try {
+        let query = `
+            SELECT
+                sl.id,
+                sl.user_id,
+                u.email        AS user_email,
+                u.first_name   AS user_first_name,
+                u.last_name    AS user_last_name,
+                sl.event_type,
+                sl.category,
+                sl.ip_address,
+                sl.details,
+                sl.created_at,
+                EXTRACT(DAY FROM NOW() - sl.created_at)::int AS age_days
+            FROM siem_logs sl
+            LEFT JOIN users u ON sl.user_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let idx = 1;
+
+        if (event_type) { query += ` AND sl.event_type = $${idx++}`; params.push(event_type); }
+        if (category)   { query += ` AND sl.category   = $${idx++}`; params.push(category); }
+        if (user_id)    { query += ` AND sl.user_id    = $${idx++}`; params.push(user_id); }
+        if (date_from)  { query += ` AND sl.created_at >= $${idx++}`; params.push(date_from); }
+        if (date_to)    { query += ` AND sl.created_at <= $${idx++}`; params.push(date_to); }
+
+        query += ` ORDER BY sl.created_at DESC LIMIT $${idx}`;
+        params.push(limit);
+
+        const { rows } = await pool.query(query, params);
+
+        // Retention compliance summary
+        const retentionRes = await pool.query(`
+            SELECT
+                COUNT(*)::int                                      AS total_records,
+                MIN(created_at)                                    AS oldest_record,
+                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '90 days')::int AS records_last_90d
+            FROM siem_logs
+        `);
+
+        res.json({
+            logs: rows,
+            pagination: { limit, returned: rows.length },
+            retention_summary: retentionRes.rows[0]
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch SIEM logs" });
     }
 });
 

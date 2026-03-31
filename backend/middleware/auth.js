@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { pool } from "../db.js";
 
 console.log("🔥 auth middleware loaded");
 
@@ -21,6 +22,33 @@ export async function requireAuth(req, res, next) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
+
+    // Sliding Session Window: Enforce 24-hour inactivity logout.
+    // If the token was issued more than 15 minutes ago, generate a fresh 24-hour token.
+    // This resets the 24-hour inactivity timer silently while protecting backend CPU overhead.
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    const ageMinutes = (nowEpoch - decoded.iat) / 60;
+    
+    if (ageMinutes >= 15) {
+        const expiresIn = "24h";
+        const newToken = jwt.sign(
+            { id: decoded.id, role: decoded.role },
+            process.env.JWT_SECRET,
+            { expiresIn }
+        );
+        
+        res.cookie('token', newToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        // Also update the continuous activity timestamp to stave off the 120-day hard suspension.
+        pool.query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [decoded.id]).catch(err => {
+            console.error("Failed to update last_login_at in sliding session", err.message);
+        });
+    }
 
     next();
   } catch (err) {
