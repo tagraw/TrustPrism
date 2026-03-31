@@ -4,6 +4,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import hpp from "hpp";
+import morgan from "morgan";
+import { apiLimiter } from "./middleware/rateLimit.js";
 
 import { pool } from "./db.js";
 
@@ -81,6 +85,27 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(cookieParser());
 
+// Security Middlewares
+app.use(helmet());
+app.use(hpp());
+
+// Logging: skip capturing sensitive request bodies
+morgan.token('body', (req) => {
+  return JSON.stringify(req.body) === '{}' ? '' : 'BODY-REDACTED';
+});
+app.use(morgan(':remote-addr :method :url :status :res[content-length] - :response-time ms :body'));
+
+// Global API rate limiting (apply to non-auth API routes)
+app.use("/api", apiLimiter);
+app.use("/projects", apiLimiter);
+app.use("/groups", apiLimiter);
+app.use("/sessions", apiLimiter);
+app.use("/dashboard", apiLimiter);
+app.use("/insights", apiLimiter);
+app.use("/admin", apiLimiter);
+app.use("/participant", apiLimiter);
+app.use("/notifications", apiLimiter);
+
 // Serve uploaded files (consent forms, etc.)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -112,6 +137,7 @@ app.use((req, res) => {
   console.log("⚠️ UNMATCHED ROUTE:", req.method, req.url);
   res.status(404).json({ error: "Route not found" });
 });
-server.listen(5000, '0.0.0.0', () => {
-  console.log('Backend running on port 5000 on 0.0.0.0');
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Backend running on port ${PORT} on 0.0.0.0`);
 });

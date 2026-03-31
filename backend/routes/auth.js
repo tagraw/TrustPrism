@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-import { loginLimiter, signupLimiter } from "../middleware/rateLimit.js";
+import { loginLimiter, signupLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
 import { loginValidation, signupValidation } from "../middleware/validation.js";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../util/email.js";
@@ -163,7 +163,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
@@ -176,6 +176,7 @@ router.post("/register", signupLimiter, signupValidation, async (req, res) => {
 
     return res.status(201).json({
       message: "Registration successful! Please check your email to verify your account.",
+      id: user.id,
       role: user.role,
       createdGroup: user.createdGroup ?? null
     });
@@ -248,11 +249,11 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: settings.sessionTimeout * 60 * 1000
     });
 
-    res.json({ role: user.role });
+    res.json({ id: user.id, role: user.role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
@@ -311,7 +312,7 @@ router.get("/verify-email", async (req, res) => {
 });
 
 // POST /auth/forgot-password
-router.post("/forgot-password",
+router.post("/forgot-password", passwordResetLimiter,
   body("email").isEmail().normalizeEmail(), // This handles the dots/casing automatically
   async (req, res) => {
     const errors = validationResult(req);
@@ -345,7 +346,7 @@ router.post("/forgot-password",
 
 
 // POST /auth/reset-password
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   const { token, newPassword } = req.body;
   console.log(token);
   try {
@@ -518,7 +519,7 @@ router.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+    sameSite: 'strict'
   });
   res.json({ message: "Logged out successfully" });
 });

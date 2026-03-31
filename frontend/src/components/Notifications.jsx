@@ -1,21 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { io } from "socket.io-client";
+import AuthContext from "../context/AuthContext";
 import "./Notifications.css";
 
 const SOCKET_URL = "http://localhost:5000";
 
 export default function Notifications({ onOpenProject }) {
+    const { auth } = useContext(AuthContext);
     const [notifications, setNotifications] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
     const socketRef = useRef(null);
     const dropdownRef = useRef(null);
     
     // Decode user id from token
-    const userId = (() => {
-        try {
-            return JSON.parse(atob(token.split(".")[1])).id;
-        } catch { return null; }
-    })();
+    const userId = auth?.id || null;
 
     useEffect(() => {
         fetchNotifications();

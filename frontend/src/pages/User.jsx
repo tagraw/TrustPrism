@@ -9,7 +9,7 @@ import StudyHistoryView from "./views/StudyHistoryView";
 import SettingsView from "./views/SettingsView";
 
 export default function User() {
-  const { auth } = useContext(AuthContext);
+  const { auth, setAuth } = useContext(AuthContext);
   const [activeView, setActiveView] = useState("dashboard");
   const [stats, setStats] = useState({
     firstName: "Loading...",
@@ -21,17 +21,25 @@ export default function User() {
 
 
   useEffect(() => {
-    if (!auth.token) return;
+    if (!auth.isAuthenticated) return;
 
-    fetch("http://127.0.0.1:5000/auth/profile-stats", {
+    fetch("http://localhost:5000/auth/profile-stats", {
       credentials: "include",
       headers: {
       },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 401) {
+          setAuth({});
+          throw new Error("Unauthorized");
+        }
+        return res.json();
+      })
       .then(setStats)
-      .catch(console.error);
-  }, [auth.token]);
+      .catch((err) => {
+        if (err.message !== "Unauthorized") console.error(err);
+      });
+  }, [auth.isAuthenticated, setAuth]);
 
   const renderContent = () => {
     switch (activeView) {
@@ -54,7 +62,7 @@ export default function User() {
               setShowFilter(false);
             }}
             onOpenSettings={() => setActiveView("profile")}
-            token={auth.token}
+            userId={auth.id}
           />
         );
     }

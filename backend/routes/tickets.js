@@ -175,82 +175,13 @@ router.get("/:id", requireAuth, async (req, res) => {
             }
         }
 
-        // Fetch messages
-        const messagesRes = await pool.query(
-            `SELECT tm.*, u.first_name, u.last_name
-             FROM ticket_messages tm
-             JOIN users u ON tm.sender_id = u.id
-             WHERE tm.ticket_id = $1
-             ORDER BY tm.created_at ASC`,
-            [id]
-        );
-
-        res.json({ ...ticket, messages: messagesRes.rows });
+        res.json(ticket);
     } catch (err) {
         console.error("Get ticket error:", err);
         res.status(500).json({ error: "Failed to fetch ticket" });
     }
 });
 
-// ─── POST /:id/messages — Add message to ticket thread ───
-router.post("/:id/messages", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { message } = req.body;
-    const userId = req.user.id;
-    const userRole = req.user.role;
-
-    if (!message || !message.trim()) return res.status(400).json({ error: "Message is required" });
-
-    try {
-        // Verify ticket exists
-        const ticketRes = await pool.query(
-            "SELECT t.*, g.name AS game_name FROM tickets t JOIN games g ON t.game_id = g.id WHERE t.id = $1",
-            [id]
-        );
-        if (ticketRes.rowCount === 0) return res.status(404).json({ error: "Ticket not found" });
-
-        const ticket = ticketRes.rows[0];
-
-        const result = await pool.query(
-            `INSERT INTO ticket_messages (ticket_id, sender_id, sender_role, message)
-             VALUES ($1, $2, $3, $4)
-             RETURNING *`,
-            [id, userId, userRole, message.trim()]
-        );
-
-        // Update ticket's updated_at
-        await pool.query("UPDATE tickets SET updated_at = NOW() WHERE id = $1", [id]);
-
-        const newMsg = result.rows[0];
-
-        // Get sender name
-        const senderRes = await pool.query("SELECT first_name, last_name FROM users WHERE id = $1", [userId]);
-        const senderName = senderRes.rows[0] ? `${senderRes.rows[0].first_name} ${senderRes.rows[0].last_name}` : "Someone";
-
-        // Notify: if admin replies → notify ticket creator; if researcher replies → notify admins
-        if (userRole === "admin") {
-            if (ticket.created_by !== userId) {
-                await notify(req, ticket.created_by, "ticket", `${senderName} replied to your ticket: "${ticket.title}"`, { ticket_id: id, game_id: ticket.game_id });
-            }
-        } else {
-            // Notify all admins
-            const adminsRes = await pool.query("SELECT id FROM users WHERE role = 'admin' AND id != $1", [userId]);
-            for (const admin of adminsRes.rows) {
-                await notify(req, admin.id, "ticket", `${senderName} replied in ticket: "${ticket.title}"`, { ticket_id: id, game_id: ticket.game_id });
-            }
-        }
-
-        // Return with sender info
-        res.status(201).json({
-            ...newMsg,
-            first_name: senderRes.rows[0]?.first_name,
-            last_name: senderRes.rows[0]?.last_name
-        });
-    } catch (err) {
-        console.error("Add message error:", err);
-        res.status(500).json({ error: "Failed to add message" });
-    }
-});
 
 // ─── PATCH /:id/status — Change ticket status (admin only) ───
 router.patch("/:id/status", requireAuth, async (req, res) => {

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
+import AuthContext from "../context/AuthContext";
 import LogoutButton from "../components/LogoutButton";
 import Notifications from "../components/Notifications";
 import UserManagement from "./views/User_Management";
@@ -12,6 +13,7 @@ import logo from "../assets/logo-removebg-preview.png";
 import "./Admin.css";
 
 export default function Admin() {
+  const { auth, setAuth } = useContext(AuthContext);
   const [activeView, setActiveView] = useState("overview");
   const [notificationGameId, setNotificationGameId] = useState(null);
   const [stats, setStats] = useState({
@@ -25,44 +27,53 @@ export default function Admin() {
   const [games, setGames] = useState([]);
 
   useEffect(() => {
-        console.log("Admin Page Token:", token); // DEBUG
-
-    if (!token) {
-      console.error("No token found, skipping fetch");
-      return;
-    }
+    if (!auth.isAuthenticated) return;
 
     const headers = {};
+
+    const handleRes = (res) => {
+      if (res.status === 401) {
+        setAuth({});
+        throw new Error("Unauthorized");
+      }
+      return res.json();
+    };
 
     // 1. Fetch Stats
     fetch("http://localhost:5000/admin/stats", {
       credentials: "include", headers })
-      .then(res => res.json())
+      .then(handleRes)
       .then(data => setStats(data))
-      .catch(err => console.error("Failed to load stats", err));
+      .catch(err => {
+        if (err.message !== "Unauthorized") console.error("Failed to load stats", err);
+      });
 
     // 2. Fetch Recent Users (re-using users endpoint)
     fetch("http://localhost:5000/admin/users", {
       credentials: "include", headers })
-      .then(res => res.json())
+      .then(handleRes)
       .then(users => {
         if (Array.isArray(users)) {
           setRecentUsers(users.slice(0, 5)); // Show top 5
         }
       })
-      .catch(err => console.error("Failed to load users", err));
+      .catch(err => {
+        if (err.message !== "Unauthorized") console.error("Failed to load users", err);
+      });
 
     // 3. Fetch Games
     fetch("http://localhost:5000/admin/games", {
       credentials: "include", headers })
-      .then(res => res.json())
+      .then(handleRes)
       .then(data => {
         if (Array.isArray(data)) {
           setGames(data);
         }
       })
-      .catch(err => console.error("Failed to load games", err));
-  }, []);
+      .catch(err => {
+        if (err.message !== "Unauthorized") console.error("Failed to load games", err);
+      });
+  }, [auth.isAuthenticated, setAuth]);
 
   return (
     <div className="admin-layout">

@@ -116,6 +116,39 @@
   margin-top: auto;
 }
 
+/* Logout Button */
+.admin-footer button {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 10px 14px;
+  border-radius: 10px;
+
+  background: #f9fafb;
+  color: #b91c1c;
+
+  border: 1px solid #fecaca;
+  cursor: pointer;
+
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-footer button:hover {
+  background: #fee2e2;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.15);
+}
+
+.admin-footer button:active {
+  transform: translateY(1px);
+}
+
 /* Main */
 .admin-main {
   flex: 1;

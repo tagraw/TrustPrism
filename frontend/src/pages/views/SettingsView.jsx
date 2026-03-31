@@ -3,7 +3,7 @@ import AuthContext from "../../context/AuthContext";
 
 export default function SettingsView() {
   const { auth } = useContext(AuthContext);
-  const API_URL = "http://127.0.0.1:5000";
+  const API_URL = "http://localhost:5000";
 
   // State for different sections
   const [profile, setProfile] = useState({ first_name: "", last_name: "" });
@@ -38,8 +38,8 @@ export default function SettingsView() {
       }
     };
 
-    if (auth.token) fetchSettingsData();
-  }, [auth.token]);
+    if (auth.isAuthenticated) fetchSettingsData();
+  }, [auth.isAuthenticated]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();

@@ -16,10 +16,11 @@ export default function App() {
     useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated");
     const role = localStorage.getItem("role");
+    const id = localStorage.getItem("userId");
 
     if (isAuthenticated === 'true' && role) {
       // Optionally: Verify token validity with a 'me' or 'validate' endpoint here
-      setAuth({ isAuthenticated: true, role });
+      setAuth({ isAuthenticated: true, role, id });
     }
   }, [setAuth]);
   return (

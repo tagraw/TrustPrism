@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { register } from "../api/auth";
 import { Link, useNavigate } from "react-router-dom";
+import AuthContext from "../context/AuthContext.jsx";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Register.css";
 
 export default function Register() {
+  const { setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
   const [role, setRole] = useState("user");
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -47,6 +49,8 @@ export default function Register() {
       // Save auth status locally
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("role", role); // store role locally
+      localStorage.setItem("userId", res.id);
+      setAuth({ isAuthenticated: true, role, id: res.id });
 
       // Redirect based on role
       if (role === "researcher") {

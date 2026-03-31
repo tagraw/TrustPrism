@@ -9,7 +9,7 @@ export default function DashboardView({
   onSortLatest,
   onSortOldest,
   onOpenSettings,
-  token,
+  userId,
 }) {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,10 +21,10 @@ export default function DashboardView({
   const [consentedGameIds, setConsentedGameIds] = useState(new Set());
 
   useEffect(() => {
-    if (!token) return;
+    if (!userId) return;
     fetchGames();
     fetchConsents();
-  }, [token, sortOrder]);
+  }, [userId, sortOrder]);
 
   const fetchGames = async () => {
     setLoading(true);
@@ -93,14 +93,11 @@ export default function DashboardView({
   const openGame = (game) => {
     if (game.production_url) {
       try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const userId = payload.id;
         const url = new URL(game.production_url);
         url.searchParams.set("participantId", userId);
         window.open(url.toString(), "_blank", "noopener,noreferrer");
       } catch (e) {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        window.open(`${game.production_url}?participantId=${payload.id}`, "_blank", "noopener,noreferrer");
+        window.open(`${game.production_url}?participantId=${userId}`, "_blank", "noopener,noreferrer");
       }
     } else {
       alert("This game doesn't have a production URL yet. Check back later!");

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
+import AuthContext from "../../context/AuthContext";
 import TicketCreate from "../../components/tickets/TicketCreate";
 import TicketDetail from "../../components/tickets/TicketDetail";
 import "../../components/tickets/Tickets.css";
@@ -20,13 +21,7 @@ const GameDetailModal = ({ game, onClose }) => {
     const [showCreateTicket, setShowCreateTicket] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState(null);
     
-    // Decode current user from token
-    const currentUser = (() => {
-        try {
-            const payload = JSON.parse(atob(token.split(".")[1]));
-            return { ...payload, id: String(payload.id) }; // ensure ID is always a string
-        } catch { return {}; }
-    })();
+    const { auth: currentUser } = useContext(AuthContext);
 
     useEffect(() => {
         fetchApiKeys();

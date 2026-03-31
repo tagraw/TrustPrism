@@ -27,6 +27,7 @@ export default function AdminTickets() {
                         setSelectedTicketId(null);
                         setRefreshKey(k => k + 1);
                     }}
+                    onStatusChange={() => setRefreshKey(k => k + 1)}
                 />
             )}
         </div>

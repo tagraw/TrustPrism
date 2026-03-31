@@ -16,12 +16,6 @@ const UserManagement = () => {
     }, []);
 
     const fetchUsers = async () => {
-                if (!token) {
-            console.error("No token found for user management");
-            setLoading(false);
-            return;
-        }
-
         try {
             const res = await fetch("http://localhost:5000/admin/users", {
       credentials: "include",
@@ -44,8 +38,7 @@ const UserManagement = () => {
       credentials: "include",
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json",
-token")}`
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ role: formData.role })
             });
@@ -68,8 +61,7 @@ token")}`
       credentials: "include",
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json",
-token")}`
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ status: newStatus })
             });
@@ -89,8 +81,7 @@ token")}`
       credentials: "include",
                 method: "PUT",
                 headers: {
-                    "Content-Type": "application/json",
-token")}`
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ access_scopes: scopes })
             });

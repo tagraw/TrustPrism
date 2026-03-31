@@ -10,7 +10,7 @@ export default function StudyHistoryView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth.token) return;
+    if (!auth.isAuthenticated) return;
 
     Promise.all([
       fetch(`${API}/participant/my-stats`, {
@@ -29,7 +29,7 @@ export default function StudyHistoryView() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [auth.token]);
+  }, [auth.isAuthenticated]);
 
   const formatTime = (seconds) => {
     if (!seconds) return "0m";
