@@ -11,6 +11,7 @@ import AuthContext from "./context/AuthContext";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import { useContext, useEffect } from "react";
+import SessionLock from "./components/SessionLock";
 export default function App() {
     const { setAuth } = useContext(AuthContext);
     useEffect(() => {
@@ -19,15 +20,34 @@ export default function App() {
     const id = localStorage.getItem("userId");
 
     if (isAuthenticated === 'true' && role) {
-      // Optionally: Verify token validity with a 'me' or 'validate' endpoint here
       setAuth({ isAuthenticated: true, role, id });
     }
   }, [setAuth]);
+
+  // TACC §3.05 — Global fetch interceptor: dispatch session:invalidated on SESSION_INVALIDATED 401
+  useEffect(() => {
+    const origFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await origFetch(...args);
+      if (response.status === 401) {
+        const clone = response.clone();
+        try {
+          const body = await clone.json();
+          if (body.code === "SESSION_INVALIDATED") {
+            window.dispatchEvent(new CustomEvent("session:invalidated", { detail: body }));
+          }
+        } catch (_) {}
+      }
+      return response;
+    };
+    return () => { window.fetch = origFetch; };
+  }, []);
   return (
     
     
     
     <BrowserRouter>
+      <SessionLock timeoutMinutes={30} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

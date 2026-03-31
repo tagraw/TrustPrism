@@ -284,9 +284,12 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
     await recordLoginAttempt(email, req.ip, true);
 
     // Hard Token Validation interception step
-    // TACC NIST Requires a Hard Token for privileged accounts. We're mocking an MFA flow here.
-    if (user.role === "admin" || user.is_tiso) {
-        // If the user hasn't supplied a code in this request, trigger it
+    // TACC §3.05 — MFA is required for admin/TISO accounts always.
+    // When the system-wide mfaEnabled setting is ON, MFA applies to ALL users.
+    const settings = await getSettings();
+    const mfaRequired = user.role === "admin" || user.is_tiso || settings.mfaEnabled || user.mfa_required;
+
+    if (mfaRequired) {
         const providedMfa = req.body.mfa_token;
         if (!providedMfa) {
              const mfaCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -311,13 +314,17 @@ router.post("/login", loginLimiter, loginValidation, async (req, res) => {
              await pool.query("UPDATE users SET mfa_token = NULL, mfa_token_expires = NULL WHERE id = $1", [user.id]);
              await logSIEMEvent(user.id, "MFA_SUCCESS", req.ip, { email });
         }
+    } else {
+        // TACC §3.05 — Audit when MFA is explicitly skipped (setting = OFF)
+        await logSIEMEvent(user.id, "MFA_SKIPPED_DISABLED", req.ip, { email, role: user.role });
     }
 
     // ACC POLICY: Force exactly 24 hours of limits.
     const expiresIn = "24h";
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      // TACC §3.05 — session_version embedded so middleware can detect invalidation
+      { id: user.id, role: user.role, session_version: user.session_version ?? 1 },
       process.env.JWT_SECRET,
       { expiresIn }
     );
@@ -596,12 +603,66 @@ router.put("/settings/password", requireAuth, async (req, res) => {
     const hash = await bcrypt.hash(newPassword, 12);
     await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, req.user.id]);
 
+    // TACC §3.05 — Re-auth required after credential change:
+    // Increment session_version to invalidate all existing JWTs for this user.
+    await pool.query("UPDATE users SET session_version = session_version + 1 WHERE id = $1", [req.user.id]);
+
     // TACC 3.03.03 — Category 7: Handling Confidential/Authentication Data
     await logSIEMEvent(req.user.id, "PASSWORD_CHANGED_SELF", req.ip, {});
+    // TACC §3.05 — Credential change triggers re-auth
+    await logSIEMEvent(req.user.id, "REAUTH_REQUIRED_CREDENTIAL_CHANGE", req.ip, {});
 
-    res.json({ message: "Password updated successfully" });
+    // Clear the cookie — user must re-login with new credentials
+    res.clearCookie("token");
+    res.json({ message: "Password updated. Please log in again.", reauth_required: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /auth/verify-session  — Lock-screen re-authentication
+// TACC §3.05 — Re-auth at device lock: validates password without requiring
+// a full new login (no MFA re-challenge needed for an active session re-lock).
+// On success: issues a fresh JWT (resets iat) so requireFreshAuth passes again.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/verify-session", requireAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Password is required" });
+
+  try {
+    const result = await pool.query(
+      "SELECT password_hash, role, session_version FROM users WHERE id = $1",
+      [req.user.id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      await logSIEMEvent(req.user.id, "LOGIN_FAILED_PASSWORD", req.ip, { source: "lock_screen" });
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    // Issue fresh JWT — resets iat so step-up auth passes
+    const freshToken = jwt.sign(
+      { id: req.user.id, role: user.role, session_version: user.session_version },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+    res.cookie("token", freshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // TACC §3.05 — Log session unlock
+    await logSIEMEvent(req.user.id, "SESSION_UNLOCKED", req.ip, { source: "lock_screen" });
+    res.json({ message: "Session verified", role: user.role });
+  } catch (err) {
+    console.error("verify-session error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

@@ -1,6 +1,6 @@
 import express from "express";
 import { pool } from "../db.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { requireAuth, requireRole, requireFreshAuth } from "../middleware/auth.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getSettings, updateSettings } from "../util/settings.js";
@@ -109,7 +109,10 @@ router.put("/users/:id/role", async (req, res) => {
         }
 
         await pool.query("COMMIT");
+        // TACC §3.05 — Re-auth required: bump session_version to invalidate target user's JWT
+        await pool.query("UPDATE users SET session_version = session_version + 1 WHERE id = $1", [id]);
         await logSIEMEvent(req.user.id, "ADMIN_ROLE_UDPATE", req.ip, { target_user_id: id, new_role: role });
+        await logSIEMEvent(req.user.id, "REAUTH_REQUIRED_ROLE_CHANGE", req.ip, { target_user_id: id, new_role: role });
         res.json({ message: "User role updated successfully" });
     } catch (err) {
         await pool.query("ROLLBACK");
@@ -169,7 +172,8 @@ router.put("/users/:id/status", async (req, res) => {
  * PUT /api/admin/researchers/:id/scopes
  * Update researcher access scopes
  */
-router.put("/researchers/:id/scopes", async (req, res) => {
+// PUT /admin/researchers/:id/scopes — TACC §3.05 step-up auth required (access rights change)
+router.put("/researchers/:id/scopes", requireFreshAuth(15), async (req, res) => {
     const { id } = req.params; // this is the user_id (since researchers table PK is user_id)
     const { access_scopes } = req.body;
 
@@ -567,7 +571,8 @@ router.put("/ai-logs/:id/flag", async (req, res) => {
  * PUT /admin/games/:id/disable
  * Disable a game (sets status to 'disabled').
  */
-router.put("/games/:id/disable", async (req, res) => {
+// PUT /admin/games/:id/disable — TACC §3.05 step-up auth required (destructive action)
+router.put("/games/:id/disable", requireFreshAuth(15), async (req, res) => {
     const { id } = req.params;
     try {
         const result = await pool.query(
@@ -610,7 +615,8 @@ router.put("/games/:id/disable", async (req, res) => {
  * DELETE /admin/api-keys/:id
  * Revoke a specific API key by ID.
  */
-router.delete("/api-keys/:id", async (req, res) => {
+// DELETE /admin/api-keys/:id — TACC §3.05 step-up auth required (key revocation)
+router.delete("/api-keys/:id", requireFreshAuth(15), async (req, res) => {
     const { id } = req.params;
     try {
         const result = await pool.query(
@@ -649,7 +655,8 @@ router.get("/settings", async (req, res) => {
  * PUT /admin/settings
  * Update security settings (partial merge).
  */
-router.put("/settings", async (req, res) => {
+// PUT /admin/settings — TACC §3.05 step-up auth required (security config change)
+router.put("/settings", requireFreshAuth(15), async (req, res) => {
     try {
         const oldSettings = await getSettings();
         const updated = await updateSettings(req.body, req.user.id);
