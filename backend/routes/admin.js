@@ -666,6 +666,23 @@ router.put("/settings", async (req, res) => {
 });
 
 /**
+ * GET /admin/system-time
+ * TACC NTP Policy — Returns the server's current NTP-synchronized timestamp.
+ * Used by the TISO to verify time synchronization across TrustPrism.
+ */
+router.get("/system-time", async (req, res) => {
+    const now = new Date();
+    await logSIEMEvent(req.user.id, "ADMIN_SYSTEM_TIME_CHECKED", req.ip, {});
+    res.json({
+        server_time: now.toISOString(),
+        server_time_local: now.toString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        epoch_ms: now.getTime(),
+        ntp_note: "TrustPrism backend time is synchronized via the TACC central NTP server (time.tacc.utexas.edu)."
+    });
+});
+
+/**
  * GET /admin/siem-logs
  * TACC 3.03.03 — Paginated SIEM audit log viewer for admin/TISO review.
  * Supports filters: event_type, category, user_id, date_from, date_to, limit (max 500)

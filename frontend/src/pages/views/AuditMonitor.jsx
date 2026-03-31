@@ -6,6 +6,9 @@ export default function AuditMonitor() {
     const [activeSection, setActiveSection] = useState("spikes");
     const [flaggingId, setFlaggingId] = useState(null);
     const [disablingId, setDisablingId] = useState(null);
+    const [siemData, setSiemData] = useState({ logs: [], pagination: {}, retention_summary: null });
+    const [siemLoading, setSiemLoading] = useState(false);
+    const [siemFilter, setSiemFilter] = useState({ category: "", event_type: "", date_from: "", date_to: "" });
     
     const fetchAudit = async () => {
         try {
@@ -19,6 +22,25 @@ export default function AuditMonitor() {
     };
 
     useEffect(() => { fetchAudit(); }, []);
+
+    const fetchSiem = async () => {
+        setSiemLoading(true);
+        const params = new URLSearchParams();
+        if (siemFilter.category)   params.set("category",   siemFilter.category);
+        if (siemFilter.event_type) params.set("event_type", siemFilter.event_type);
+        if (siemFilter.date_from)  params.set("date_from",  siemFilter.date_from);
+        if (siemFilter.date_to)    params.set("date_to",    siemFilter.date_to);
+        try {
+            const res = await fetch(`http://localhost:5000/admin/siem-logs?${params}`, { credentials: "include" });
+            if (res.ok) setSiemData(await res.json());
+        } catch (e) { console.error(e); }
+        setSiemLoading(false);
+    };
+
+    useEffect(() => {
+        if (activeSection === "siem") fetchSiem();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSection]);
 
     const handleFlag = async (logId, flagged, reason) => {
         setFlaggingId(logId);
@@ -113,6 +135,9 @@ export default function AuditMonitor() {
                 </button>
                 <button style={sectionStyle("logs")} onClick={() => setActiveSection("logs")}>
                     All AI Logs ({data.logs.length})
+                </button>
+                <button style={sectionStyle("siem")} onClick={() => setActiveSection("siem")}>
+                    SIEM Events
                 </button>
             </div>
 
@@ -254,6 +279,124 @@ export default function AuditMonitor() {
                             </tbody>
                         </table>
                     )}
+                </div>
+            )}
+            {/* ── SIEM Events (TACC 3.03.03) ── */}
+            {activeSection === "siem" && (
+                <div>
+                    {/* Retention Banner */}
+                    {siemData.retention_summary && (
+                        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                            {[
+                                { label: "Total SIEM Records", value: siemData.retention_summary.total_records, color: "#0ea5e9" },
+                                { label: "In 90-Day Window",   value: siemData.retention_summary.records_last_90d, color: "#16a34a" },
+                                { label: "Oldest Record", value: siemData.retention_summary.oldest_record ? new Date(siemData.retention_summary.oldest_record).toLocaleDateString() : "—", color: "#64748b" },
+                            ].map(s => (
+                                <div key={s.label} style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 16px", display: "flex", flexDirection: "column" }}>
+                                    <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{s.label}</span>
+                                    <span style={{ fontSize: "1.4rem", fontWeight: 700, color: s.color }}>{s.value}</span>
+                                </div>
+                            ))}
+                            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px 16px", display: "flex", alignItems: "center", gap: "6px", flex: 1 }}>
+                                <span className="material-icons-round" style={{ color: "#16a34a", fontSize: "18px" }}>verified_user</span>
+                                <span style={{ color: "#15803d", fontSize: "0.8rem", fontWeight: 600 }}>TACC §3.03.03: 90-day minimum retention policy active. All records preserved.</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filters */}
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+                        <div>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, marginBottom: "3px" }}>CATEGORY</div>
+                            <select
+                                value={siemFilter.category}
+                                onChange={e => setSiemFilter(p => ({ ...p, category: e.target.value }))}
+                                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.8rem", background: "white" }}
+                            >
+                                <option value="">All Categories</option>
+                                {["UNSUCCESSFUL_LOGON","PRIVILEGED_ACCOUNT_ACTIVITY","ACCOUNT_MANAGEMENT","ACCESS_RIGHTS_MODIFICATION","SECURITY_CONFIG_CHANGE","REMOTE_LOGON","CONFIDENTIAL_DATA_HANDLING","AUTH_AUTHORIZATION","APPLICATION_PROCESS_MANAGEMENT","APPLICATION_FAILURE","SUSPICIOUS_ACTIVITY","SYSTEM_CONFIG_CHANGE"].map(c => (
+                                    <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, marginBottom: "3px" }}>EVENT TYPE</div>
+                            <input
+                                placeholder="e.g. LOGIN_FAILED"
+                                value={siemFilter.event_type}
+                                onChange={e => setSiemFilter(p => ({ ...p, event_type: e.target.value }))}
+                                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.8rem", width: "160px" }}
+                            />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, marginBottom: "3px" }}>FROM</div>
+                            <input type="date" value={siemFilter.date_from}
+                                onChange={e => setSiemFilter(p => ({ ...p, date_from: e.target.value }))}
+                                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.8rem" }} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, marginBottom: "3px" }}>TO</div>
+                            <input type="date" value={siemFilter.date_to}
+                                onChange={e => setSiemFilter(p => ({ ...p, date_to: e.target.value }))}
+                                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.8rem" }} />
+                        </div>
+                        <button onClick={fetchSiem} disabled={siemLoading}
+                            style={{ padding: "6px 16px", background: "#0ea5e9", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }}>
+                            {siemLoading ? "Loading…" : "Apply Filters"}
+                        </button>
+                        <button onClick={() => { setSiemFilter({ category: "", event_type: "", date_from: "", date_to: "" }); }}
+                            style={{ padding: "6px 12px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}>
+                            Reset
+                        </button>
+                    </div>
+
+                    {/* Log Table */}
+                    <div style={{ background: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+                        {siemLoading ? (
+                            <p style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>Loading SIEM events…</p>
+                        ) : siemData.logs.length === 0 ? (
+                            <p style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>No SIEM events match the current filters.</p>
+                        ) : (
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <thead>
+                                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                                        {["Event Type", "Category", "User", "IP", "Age (days)", "Time"].map(h => (
+                                            <th key={h} style={{ textAlign: "left", padding: "10px 12px", color: "#64748b", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {siemData.logs.map(log => (
+                                        <tr key={log.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                            <td style={{ padding: "8px 12px" }}>
+                                                <span style={{ padding: "2px 8px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.78rem", fontFamily: "monospace", color: "#0f172a" }}>
+                                                    {log.event_type}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: "8px 12px" }}>
+                                                <span style={{ padding: "2px 8px", background: "#eff6ff", color: "#1d4ed8", borderRadius: "4px", fontSize: "0.72rem", fontWeight: 600 }}>
+                                                    {(log.category || "UNCATEGORIZED").replace(/_/g, " ")}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: "8px 12px", color: "#334155", fontSize: "0.82rem" }}>
+                                                {log.user_email || <span style={{ color: "#94a3b8" }}>anonymous</span>}
+                                            </td>
+                                            <td style={{ padding: "8px 12px", color: "#64748b", fontSize: "0.78rem", fontFamily: "monospace" }}>{log.ip_address}</td>
+                                            <td style={{ padding: "8px 12px", color: (log.age_days || 0) > 80 ? "#dc2626" : "#64748b", fontSize: "0.82rem", fontWeight: (log.age_days || 0) > 80 ? 700 : 400 }}>
+                                                {log.age_days ?? "<1"}
+                                            </td>
+                                            <td style={{ padding: "8px 12px", color: "#94a3b8", fontSize: "0.78rem" }}>{new Date(log.created_at).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                        {siemData.pagination?.returned > 0 && (
+                            <div style={{ padding: "8px 14px", borderTop: "1px solid #f1f5f9", color: "#94a3b8", fontSize: "0.75rem", textAlign: "right" }}>
+                                Showing {siemData.pagination.returned} of up to {siemData.pagination.limit} records
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

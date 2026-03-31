@@ -9,6 +9,7 @@ import AuditMonitor from "./views/AuditMonitor";
 import SDKDocs from "./views/SDKDocs";
 import SecuritySettings from "./views/SecuritySettings";
 import AdminTickets from "./views/AdminTickets";
+import ChangeControl from "./views/ChangeControl";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Admin.css";
 
@@ -16,6 +17,7 @@ export default function Admin() {
   const { auth, setAuth } = useContext(AuthContext);
   const [activeView, setActiveView] = useState("overview");
   const [notificationGameId, setNotificationGameId] = useState(null);
+  const [pendingCCRCount, setPendingCCRCount] = useState(0);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeResearchers: 0,
@@ -73,6 +75,13 @@ export default function Admin() {
       .catch(err => {
         if (err.message !== "Unauthorized") console.error("Failed to load games", err);
       });
+
+    // 4. Fetch pending CCR count for badge
+    fetch("http://localhost:5000/api/tickets/change-requests?approval_status=pending", {
+      credentials: "include", headers })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPendingCCRCount(data.length); })
+      .catch(() => {});
   }, [auth.isAuthenticated, setAuth]);
 
   return (
@@ -128,7 +137,23 @@ export default function Admin() {
             onClick={() => setActiveView("audit")}
           >
             <span className="material-icons-round">shield</span>
-            Audit & Monitoring
+            Audit &amp; Monitoring
+          </a>
+          <a
+            className={activeView === "changes" ? "active" : ""}
+            onClick={() => setActiveView("changes")}
+            style={{ position: "relative" }}
+          >
+            <span className="material-icons-round">rule</span>
+            Change Control
+            {pendingCCRCount > 0 && (
+              <span style={{
+                position: "absolute", top: "6px", right: "8px",
+                background: "#b45309", color: "white",
+                borderRadius: "10px", padding: "1px 6px",
+                fontSize: "0.68rem", fontWeight: 700, lineHeight: 1.5
+              }}>{pendingCCRCount}</span>
+            )}
           </a>
           <a
             className={activeView === "sdk" ? "active" : ""}
@@ -157,13 +182,14 @@ export default function Admin() {
         <header className="admin-topbar">
           <h1>
             {activeView === 'users' ? 'User Management' :
-              activeView === 'groups' ? 'Group Management' :
-                activeView === 'approvals' ? 'Study Approvals' :
-                  activeView === 'tickets' ? 'Ticket Dashboard' :
-                  activeView === 'audit' ? 'Audit & Monitoring' :
-                    activeView === 'sdk' ? 'SDK Documentation' :
-                      activeView === 'settings' ? 'Security Settings' :
-                        'System Dashboard'}
+            activeView === 'groups' ? 'Group Management' :
+              activeView === 'approvals' ? 'Study Approvals' :
+                activeView === 'tickets' ? 'Ticket Dashboard' :
+                activeView === 'audit' ? 'Audit & Monitoring' :
+                activeView === 'changes' ? 'Change Control' :
+                  activeView === 'sdk' ? 'SDK Documentation' :
+                    activeView === 'settings' ? 'Security Settings' :
+                      'System Dashboard'}
           </h1>
 
           <div className="topbar-actions">
@@ -185,6 +211,8 @@ export default function Admin() {
           <AdminTickets />
         ) : activeView === 'audit' ? (
           <AuditMonitor />
+        ) : activeView === 'changes' ? (
+          <ChangeControl />
         ) : activeView === 'sdk' ? (
           <SDKDocs />
         ) : activeView === 'settings' ? (

@@ -53,6 +53,14 @@ export const SIEM_EVENT_CATEGORY = {
     // Category 10 — Privilege Access & Use
     // (ADMIN_SIEM_ACCESSED already mapped above)
 
+    // Category 5/12 — Configuration Change Requests (CCR workflow)
+    CCR_SUBMITTED:                  "SECURITY_CONFIG_CHANGE",
+    CCR_APPROVED:                   "SECURITY_CONFIG_CHANGE",
+    CCR_DISAPPROVED:                "SECURITY_CONFIG_CHANGE",
+
+    // Category 12 — NTP / System Time Check
+    ADMIN_SYSTEM_TIME_CHECKED:      "SYSTEM_CONFIG_CHANGE",
+
     // Category 13 — Managing Application Processes
     ADMIN_GAME_STATUS_CHANGE:       "APPLICATION_PROCESS_MANAGEMENT",
     ADMIN_GAME_DISABLED:            "APPLICATION_PROCESS_MANAGEMENT",
