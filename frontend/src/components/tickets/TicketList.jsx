@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
+import { io } from "socket.io-client";
+import AuthContext from "../../context/AuthContext";
 import "./Tickets.css";
 
 const API = "http://localhost:5000";
 
 export default function TicketList({ onSelectTicket, gameId, role }) {
+    const { auth } = useContext(AuthContext);
+    const socketRef = useRef(null);
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState("");
@@ -12,7 +16,31 @@ export default function TicketList({ onSelectTicket, gameId, role }) {
     
     useEffect(() => {
         fetchTickets();
-    }, [filterStatus, filterPriority, filterGame]);
+
+        // Connect socket for live ticket status updates if user is authenticated
+        const userId = auth?.id;
+        if (userId) {
+            if (!socketRef.current) {
+                socketRef.current = io(API, { transports: ["websocket", "polling"] });
+                socketRef.current.emit("join_user", userId);
+            }
+
+            // Remove existing listeners to avoid duplicates if useEffect re-runs
+            socketRef.current.off("ticket_status_update");
+            socketRef.current.on("ticket_status_update", (data) => {
+                setTickets(prev => prev.map(t => 
+                    t.id === data.ticket_id ? { ...t, status: data.status } : t
+                ));
+            });
+        }
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+        };
+    }, [filterStatus, filterPriority, filterGame, auth?.id]);
 
     async function fetchTickets() {
         setLoading(true);
