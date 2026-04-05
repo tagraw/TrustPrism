@@ -72,7 +72,7 @@ export default function RGroups({ onViewProject }) {
   // Helper to pick a consistent icon color based on ID string
   const getIconColorClass = (id) => {
     const sum = id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const colors = ["rg-icon-blue", "rg-icon-orange", "rg-icon-green", "rg-icon-purple", "rg-icon-pink"];
+    const colors = ["rg-icon-blue", "rg-icon-orange", "rg-icon-green", "rg-icon-teal", "rg-icon-pink"];
     return colors[sum % colors.length];
   };
 

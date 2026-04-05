@@ -69,12 +69,12 @@ export default function DashboardView({
 
   const getCategoryColor = (cat) => {
     const colors = {
-      trust: "#8b5cf6",
+      trust: "#14b8a6",
       cooperation: "#0ea5e9",
       risk: "#f59e0b",
       social: "#ec4899",
       cognitive: "#10b981",
-      behavioral: "#6366f1",
+      behavioral: "#0284c7",
     };
     return colors[cat] || "#64748b";
   };

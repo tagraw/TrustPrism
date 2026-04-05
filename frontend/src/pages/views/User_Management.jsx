@@ -154,7 +154,7 @@ const UserManagement = () => {
                                 <span>{user.email}</span>
                             </td>
                             <td>
-                                <span className={`pill ${user.role === 'admin' ? 'purple' : user.role === 'researcher' ? 'blue' : 'gray'}`}>
+                                <span className={`pill ${user.role === 'admin' ? 'teal' : user.role === 'researcher' ? 'blue' : 'gray'}`}>
                                     {user.role} {user.role === 'admin' ? '(TISO)' : ''}
                                 </span>
                             </td>

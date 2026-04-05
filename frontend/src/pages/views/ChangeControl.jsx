@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const CHANGE_TYPE_META = {
     security_config:    { label: "Security Config",    color: "#dc2626", bg: "#fef2f2", icon: "security" },
-    access_rights:      { label: "Access Rights",      color: "#7c3aed", bg: "#f5f3ff", icon: "manage_accounts" },
+    access_rights:      { label: "Access Rights",      color: "#14b8a6", bg: "#ccfbf1", icon: "manage_accounts" },
     system_config:      { label: "System Config",      color: "#0369a1", bg: "#f0f9ff", icon: "settings" },
     game_lifecycle:     { label: "Game Lifecycle",     color: "#059669", bg: "#f0fdf4", icon: "videogame_asset" },
     account_management: { label: "Account Mgmt",       color: "#b45309", bg: "#fffbeb", icon: "badge" },

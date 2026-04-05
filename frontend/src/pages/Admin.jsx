@@ -229,7 +229,7 @@ export default function Admin() {
               </div>
 
               <div className="stat-card">
-                <span className="material-icons-round purple">school</span>
+                <span className="material-icons-round teal">school</span>
                 <p>Researchers</p>
                 <h2>{stats.activeResearchers}</h2>
                 <small className="positive">Active</small>
@@ -276,7 +276,7 @@ export default function Admin() {
                           <span>{u.email}</span>
                         </td>
                         <td>
-                          <span className={`pill ${u.role === 'admin' ? 'purple' : u.role === 'researcher' ? 'blue' : 'gray'}`}>
+                          <span className={`pill ${u.role === 'admin' ? 'teal' : u.role === 'researcher' ? 'blue' : 'gray'}`}>
                             {u.role}
                           </span>
                         </td>

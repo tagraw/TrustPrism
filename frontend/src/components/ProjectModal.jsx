@@ -366,7 +366,7 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                                     border: '1px solid #334155',
                                                     borderRadius: '8px',
                                                     padding: '12px',
-                                                    color: '#a5b4fc',
+                                                    color: '#2dd4bf',
                                                     margin: 0,
                                                     overflowX: 'auto'
                                                 }}>
@@ -405,7 +405,7 @@ export default function ProjectModal({ project, onClose, onViewInsights }) {
                                         {project.staging_url && (
                                             <div className="pm-doc-section">
                                                 <h4>Staging URL</h4>
-                                                <p><a href={project.staging_url} target="_blank" rel="noreferrer" style={{ color: '#818cf8' }}>{project.staging_url}</a></p>
+                                                <p><a href={project.staging_url} target="_blank" rel="noreferrer" style={{ color: '#0ea5e9' }}>{project.staging_url}</a></p>
                                             </div>
                                         )}
                                         {project.production_url && (

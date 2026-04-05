@@ -237,7 +237,7 @@
 }
 
 .filter-btn:hover {
-  background: #eef2ff;
+  background: #e0f2fe;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
@@ -516,7 +516,7 @@
   padding: 6px 14px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  background: linear-gradient(135deg, #0ea5e9, #14b8a6);
   color: white;
   font-weight: 600;
   font-size: 0.82rem;
