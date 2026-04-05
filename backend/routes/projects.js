@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import { checkOwnership } from "../middleware/security.js";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
@@ -157,8 +158,19 @@ router.get("/:id", requireAuth, async (req, res) => {
         const { rows } = await pool.query("SELECT * FROM games WHERE id = $1", [id]);
         if (rows.length === 0) return res.status(404).json({ error: "Project not found" });
 
-        // Check access (simplification: public for internal users for now)
-        res.json(rows[0]);
+        const project = rows[0];
+
+        // TACC Security: Restrict detailed view to project owner, group members, or admins
+        const isOwner = project.researcher_id === req.user.id;
+        const isAdmin = req.user.role === 'admin';
+        
+        if (!isOwner && !isAdmin) {
+             // Redact sensitive fields for public/unauthorized view
+             const { experimental_conditions, production_url, staging_url, ...publicData } = project;
+             return res.json(publicData);
+        }
+
+        res.json(project);
     } catch (err) {
         res.status(500).json({ error: "Server error" });
     }
@@ -180,10 +192,10 @@ router.put("/:id", requireAuth, async (req, res) => {
         const project = oldProject.rows[0];
         const oldStatus = project.status;
 
-        // Basic permission check (improve later)
-        if (req.user.role === 'researcher' && project.researcher_id !== req.user.id) {
-            // Check group membership if it's a group project
-            // Skipping complex check for brevity, assuming verified via middleware or simple check
+        // TACC §3.05 — Verification of Authorized Access (Ownership Check)
+        // Only owners or admins can modify a project.
+        if (req.user.role !== 'admin' && project.researcher_id !== req.user.id) {
+            return res.status(403).json({ error: "Forbidden: You do not own this project" });
         }
 
         // --- Status Transition Validation ---
@@ -429,6 +441,21 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
     } catch (err) {
         console.error("Export error:", err);
         res.status(500).json({ error: "Failed to export data" });
+    }
+});
+
+/**
+ * DELETE /projects/:id
+ * Secure deletion — verifies ownership before removal.
+ */
+router.delete("/:id", requireAuth, checkOwnership('games', 'researcher_id'), async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query("DELETE FROM games WHERE id = $1", [id]);
+        res.json({ message: "Project deleted successfully" });
+    } catch (err) {
+        console.error("Delete error:", err);
+        res.status(500).json({ error: "Failed to delete project" });
     }
 });
 

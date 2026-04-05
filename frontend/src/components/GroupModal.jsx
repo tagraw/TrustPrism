@@ -9,7 +9,6 @@ export default function GroupModal({ group, onClose, onViewProject }) {
 
     // Invite State
     const [inviteEmail, setInviteEmail] = useState("");
-    const [inviteRole, setInviteRole] = useState("Researcher (Full Access)");
 
     useEffect(() => {
         if (!group) return;
@@ -42,8 +41,8 @@ export default function GroupModal({ group, onClose, onViewProject }) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-},
-                body: JSON.stringify({ email: inviteEmail, role: inviteRole })
+                },
+                body: JSON.stringify({ email: inviteEmail })
             });
             if (res.ok) {
                 alert(`Invitation sent to ${inviteEmail}`);
@@ -169,18 +168,7 @@ export default function GroupModal({ group, onClose, onViewProject }) {
                         />
                     </div>
 
-                    <div className="gm-input-group">
-                        <label className="gm-label">Assign Role</label>
-                        <select
-                            className="gm-select"
-                            value={inviteRole}
-                            onChange={e => setInviteRole(e.target.value)}
-                        >
-                            <option>Researcher (Full Access)</option>
-                            <option>Viewer (Read Only)</option>
-                            <option>Admin</option>
-                        </select>
-                    </div>
+
 
                     <button className="gm-btn-invite" onClick={sendInvite}>Send Invitation</button>
 

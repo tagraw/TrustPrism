@@ -8,7 +8,7 @@ import helmet from "helmet";
 import hpp from "hpp";
 import morgan from "morgan";
 import { apiLimiter } from "./middleware/rateLimit.js";
-
+import { csrfProtection } from "./middleware/security.js";
 import { pool } from "./db.js";
 import { logSIEMEvent } from "./util/siem.js";
 
@@ -47,14 +47,14 @@ const io = new Server(server, {
   cors: {
     origin: ["http://localhost:5175", "http://localhost:5174", "http://localhost:3000"], // Explicitly allow frontend origin
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-api-key", "X-Requested-With", "X-TrustPrism-CSRF"],
     credentials: true
   }
 });
 app.use(cors({
   origin: ["http://localhost:5175", "http://localhost:5174", "http://localhost:3000"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-api-key", "X-Requested-With", "X-TrustPrism-CSRF"],
   credentials: true
 }));
 
@@ -89,6 +89,9 @@ app.use(cookieParser());
 // Security Middlewares
 app.use(helmet());
 app.use(hpp());
+
+// CSRF Protection (Requires X-TrustPrism-CSRF or X-Requested-With header on all POST/PUT/DELETE)
+app.use(csrfProtection);
 
 // Logging: skip capturing sensitive request bodies
 morgan.token('body', (req) => {

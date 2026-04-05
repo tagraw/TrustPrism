@@ -81,3 +81,26 @@ export const sendMfaEmail = async (email, mfaCode) => {
 
     return transporter.sendMail(mailOptions);
 };
+
+export const sendResearcherInviteEmail = async (email, groupId, groupName) => {
+    const signupUrl = `${process.env.FRONTEND_URL}/register?group=${encodeURIComponent(groupId)}&email=${encodeURIComponent(email)}`;
+    
+    const mailOptions = {
+        from: `"TrustPrism" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Invitation to join TrustPrism Researcher Group",
+        html: `
+        <div style="font-family: Arial, sans-serif; color: #333; padding: 2rem; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #0f172a;">You've been invited!</h2>
+            <p style="line-height: 1.6;">You have been invited to join the <strong>${groupName}</strong> researcher group on TrustPrism.</p>
+            <p style="line-height: 1.6;">Please click the button below to sign up and join the group automatically:</p>
+            <a href="${signupUrl}" style="display: inline-block; margin: 1.5rem 0; padding: 0.75rem 1.5rem; background-color: #0ea5e9; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                Join Group
+            </a>
+            <p style="line-height: 1.6;">If you already have an account, please log in and navigate to the group directly. This link contains your invitation code.</p>
+        </div>
+        `,
+    };
+
+    return transporter.sendMail(mailOptions);
+};

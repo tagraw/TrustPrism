@@ -24,11 +24,29 @@ export default function App() {
     }
   }, [setAuth]);
 
-  // TACC §3.05 — Global fetch interceptor: dispatch session:invalidated on SESSION_INVALIDATED 401
+  // TACC §3.05 — Global fetch interceptor: 
+  // 1. Dispatch session:invalidated on SESSION_INVALIDATED 401
+  // 2. Automatically inject CSRF header for all non-GET requests
   useEffect(() => {
     const origFetch = window.fetch;
     window.fetch = async (...args) => {
-      const response = await origFetch(...args);
+      let [url, options] = args;
+      
+      // If no options, create empty object
+      options = options || {};
+      const method = (options.method || "GET").toUpperCase();
+      
+      // Inject CSRF header for write requests (POST, PUT, DELETE, PATCH)
+      if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+        options.headers = {
+          ...options.headers,
+          "X-TrustPrism-CSRF": "1", // Constant value used to block automated cross-origin forms
+          "X-Requested-With": "XMLHttpRequest" // Legacy protection
+        };
+      }
+
+      const response = await origFetch(url, options);
+
       if (response.status === 401) {
         const clone = response.clone();
         try {

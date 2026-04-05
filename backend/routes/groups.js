@@ -2,6 +2,7 @@ import express from "express";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { logSIEMEvent } from "../util/siem.js";
+import { sendResearcherInviteEmail } from "../util/email.js";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
 
@@ -92,15 +93,14 @@ router.post("/:groupId/join", requireAuth, requireRole("researcher"), async (req
   const { groupId } = req.params;
 
   try {
-    // Check verified
-    // const { rows } = await pool.query(
-    //   "SELECT verified FROM researchers WHERE user_id = $1",
-    //   [researcherId]
-    // );
+    const { rows } = await pool.query(
+      "SELECT is_verified FROM users WHERE id = $1",
+      [researcherId]
+    );
 
-    // if (!rows[0] || !rows[0].verified) {
-    //   return res.status(403).json({ error: "Researcher not verified" });
-    // }
+    if (!rows[0] || !rows[0].is_verified) {
+      return res.status(403).json({ error: "Researcher not verified" });
+    }
 
     // Add to group members
     await pool.query(
@@ -223,14 +223,30 @@ router.get("/:groupId/games", requireAuth, async (req, res) => {
 router.post("/:groupId/invite", requireAuth, requireRole("researcher"), async (req, res) => {
   const { groupId } = req.params;
   const { email } = req.body;
+  const requesterId = req.user.id;
 
-  // In a real app, generate a unique token, store in DB, email it.
-  // For MVP/Demo: Just log it.
-  console.log(`[INVITE SYSTEM] Sending invite to ${email} for group ${groupId}`);
-  console.log(`[INVITE LINK] http://localhost:5173/join?group=${groupId}&email=${encodeURIComponent(email)}`);
+  try {
+    // TACC §3.05 — Verification of Authorized Access
+    // Only group owner or admin can invite.
+    const groupCheck = await pool.query(
+        "SELECT name, created_by FROM researcher_groups WHERE id = $1",
+        [groupId]
+    );
+    if (groupCheck.rows.length === 0) return res.status(404).json({ error: "Group not found" });
+    
+    if (req.user.role !== 'admin' && groupCheck.rows[0].created_by !== requesterId) {
+        return res.status(403).json({ error: "Only the group owner can invite new researchers" });
+    }
 
-  // Simulate success
-  res.json({ message: `Invitation sent to ${email}` });
+    const groupName = groupCheck.rows[0].name;
+
+    await sendResearcherInviteEmail(email, groupId, groupName);
+
+    res.json({ message: `Invitation sent to ${email}` });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to send invitation" });
+  }
 });
 
 

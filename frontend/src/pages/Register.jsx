@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { register } from "../api/auth";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthContext from "../context/AuthContext.jsx";
 import logo from "../assets/logo-removebg-preview.png";
 import "./Register.css";
@@ -8,17 +8,21 @@ import "./Register.css";
 export default function Register() {
   const { setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [role, setRole] = useState("user");
+  const [searchParams] = useSearchParams();
+  const initialEmail = searchParams.get("email") || "";
+  const initialGroup = searchParams.get("group") || "";
+
+  const [role, setRole] = useState(initialGroup ? "researcher" : "user");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
 
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
-    email: "",
+    email: initialEmail,
     dob: "",
     password: "",
-    groupId: "",
+    groupId: initialGroup,
     createGroupName: "",
   });
 
@@ -99,6 +103,7 @@ export default function Register() {
                 <label>First name</label>
                 <input
                   name="first_name"
+                  value={form.first_name}
                   placeholder="John"
                   onChange={update}
                   required
@@ -109,6 +114,7 @@ export default function Register() {
                 <label>Last name</label>
                 <input
                   name="last_name"
+                  value={form.last_name}
                   placeholder="Doe"
                   onChange={update}
                   required
@@ -120,6 +126,7 @@ export default function Register() {
               <label>Email address</label>
               <input
                 name="email"
+                value={form.email}
                 placeholder="john.doe@example.com"
                 onChange={update}
                 required
@@ -132,6 +139,7 @@ export default function Register() {
               <input
                 type="password"
                 name="password"
+                value={form.password}
                 placeholder="••••••••"
                 onChange={update}
                 required
@@ -161,7 +169,7 @@ export default function Register() {
             {role === "user" && (
               <div className="field">
                 <label>Date of birth</label>
-                <input type="date" name="dob" onChange={update} required />
+                <input type="date" name="dob" value={form.dob} onChange={update} required />
               </div>
             )}
 
@@ -171,6 +179,7 @@ export default function Register() {
                   <label>Join Group ID (optional)</label>
                   <input
                     name="groupId"
+                    value={form.groupId}
                     placeholder="e.g. TP-48291"
                     onChange={update}
                   />
@@ -180,6 +189,7 @@ export default function Register() {
                   <label>Create new group</label>
                   <input
                     name="createGroupName"
+                    value={form.createGroupName}
                     placeholder="Trust & AI Lab"
                     onChange={update}
                   />
