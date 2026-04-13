@@ -92,8 +92,12 @@ export default function RSettings() {
 },
         body: JSON.stringify(cleanedProfile)
       });
-      if (res.ok) alert("Profile updated successfully!");
-      else alert("Failed to update profile");
+      if (res.ok) {
+        alert("Profile updated successfully!");
+      } else {
+        const data = await res.json();
+        alert(`Failed to update profile: ${data.error || "Unknown error"}`);
+      }
     } catch (err) {
       console.error(err);
       alert("Error saving profile");
@@ -117,7 +121,8 @@ export default function RSettings() {
         setNewEmail("");
         fetchSettings(); // Refresh list
       } else {
-        alert("Failed to add email.");
+        const data = await res.json();
+        alert(`Failed to add email: ${data.error || "Unknown error"}`);
       }
     } catch (err) {
       console.error(err);

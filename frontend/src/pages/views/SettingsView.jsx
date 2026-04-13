@@ -49,7 +49,12 @@ export default function SettingsView() {
       headers: { "Content-Type": "application/json",},
       body: JSON.stringify(profile)
     });
-    if (res.ok) alert("Profile updated!");
+    if (res.ok) {
+      alert("Profile updated!");
+    } else {
+      const data = await res.json();
+      alert(`Error updating profile: ${data.error || "Unknown error"}`);
+    }
   };
 
   const handleAddEmail = async () => {
@@ -76,6 +81,9 @@ export default function SettingsView() {
       } catch (err) {
         console.error("Load error:", err);
       }
+    } else {
+      const data = await res.json();
+      alert(`Error adding email: ${data.error || "Unknown error"}`);
     }
   };
 
