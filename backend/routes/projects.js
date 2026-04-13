@@ -6,6 +6,9 @@ import multer from "multer";
 import path from "path";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { secureDelete, generateSecureCSVBuffer, clearBuffer, saveToSecureTmp } from "../util/storage.js";
+import { createGameLimiter } from "../middleware/rateLimit.js";
+import { gameCreateValidation } from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -70,7 +73,7 @@ router.get("/", requireAuth, async (req, res) => {
  * POST /projects
  * Create new project + auto-generate development API key
  */
-router.post("/", requireAuth, requireRole("researcher"), upload.fields([{ name: "consentForm", maxCount: 1 }, { name: "irb_document", maxCount: 1 }]), async (req, res) => {
+router.post("/", requireAuth, requireRole("researcher"), upload.fields([{ name: "consentForm", maxCount: 1 }, { name: "irb_document", maxCount: 1 }]), createGameLimiter, gameCreateValidation, async (req, res) => {
     const {
         name,
         description,
@@ -427,16 +430,20 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
             r.participant_demographics || "{}"
         ]);
 
-        const csvContent = [
-            headers.join(","),
-            ...csvRows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
-        ].join("\n");
-
         const filename = `${game.name.replace(/[^a-zA-Z0-9]/g, "_")}_export_${new Date().toISOString().split("T")[0]}.csv`;
 
-        res.setHeader("Content-Type", "text/csv");
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-        res.send(csvContent);
+        // --- NEW: Secure CSV Export with Temporary File & Zero-Fill ---
+        const buffer = generateSecureCSVBuffer(headers, csvRows);
+        const tempPath = await saveToSecureTmp(filename, buffer);
+        clearBuffer(buffer); // Overwrite memory
+
+        res.download(tempPath, filename, async (err) => {
+            if (err) {
+                console.error("Download error:", err);
+            }
+            await secureDelete(tempPath); // Overwrite and unlink
+        });
+        // --- END SECURE EXPORT ---
 
     } catch (err) {
         console.error("Export error:", err);
@@ -451,6 +458,15 @@ router.get("/:id/export", requireAuth, requireRole("researcher"), async (req, re
 router.delete("/:id", requireAuth, checkOwnership('games', 'researcher_id'), async (req, res) => {
     const { id } = req.params;
     try {
+        // --- NEW: Secure File Deletion ---
+        const projectRes = await pool.query("SELECT consent_form_url, irb_document_url FROM games WHERE id = $1", [id]);
+        if (projectRes.rows.length > 0) {
+            const { consent_form_url, irb_document_url } = projectRes.rows[0];
+            if (consent_form_url) await secureDelete(consent_form_url);
+            if (irb_document_url) await secureDelete(irb_document_url);
+        }
+        // --- END SECURE DELETION ---
+
         await pool.query("DELETE FROM games WHERE id = $1", [id]);
         res.json({ message: "Project deleted successfully" });
     } catch (err) {

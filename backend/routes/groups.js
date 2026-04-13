@@ -3,16 +3,10 @@ import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { logSIEMEvent } from "../util/siem.js";
 import { sendResearcherInviteEmail } from "../util/email.js";
-import rateLimit from "express-rate-limit";
-import { body, validationResult } from "express-validator";
+import { createGroupLimiter } from "../middleware/rateLimit.js";
+import { groupCreateValidation } from "../middleware/validation.js";
 
 const router = express.Router();
-
-const createGroupLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: "Too many groups created, please try again later."
-});
 
 /**
  * CREATE GROUP
@@ -23,15 +17,8 @@ router.post(
   requireAuth,
   requireRole("researcher"),
   createGroupLimiter,
-  [
-    body("name").trim().isLength({ min: 3 }).withMessage("Group name must be at least 3 characters"),
-    body("description").optional().trim()
-  ],
+  groupCreateValidation,
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
 
     const { name, description } = req.body;
     const researcherId = req.user.id;

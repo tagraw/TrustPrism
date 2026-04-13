@@ -2,6 +2,8 @@ import express from "express";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { logSIEMEvent } from "../util/siem.js";
+import { createTicketLimiter } from "../middleware/rateLimit.js";
+import { ticketValidation, ccrValidation } from "../middleware/validation.js";
 
 const router = express.Router();
 
@@ -16,20 +18,10 @@ async function notify(req, userId, type, message, metadata) {
 }
 
 // ─── POST / — Create a ticket (researcher) ───
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, createTicketLimiter, ticketValidation, async (req, res) => {
     const { title, description, game_id, priority, category } = req.body;
     const userId = req.user.id;
     const userRole = req.user.role;
-
-    // Validation
-    if (!title || !title.trim()) return res.status(400).json({ error: "Title is required" });
-    if (!description || !description.trim()) return res.status(400).json({ error: "Description is required" });
-    if (!game_id) return res.status(400).json({ error: "Game ID is required" });
-
-    const validPriorities = ["low", "medium", "high"];
-    const validCategories = ["bug", "feature_request", "data_issue", "other"];
-    if (priority && !validPriorities.includes(priority)) return res.status(400).json({ error: "Invalid priority" });
-    if (category && !validCategories.includes(category)) return res.status(400).json({ error: "Invalid category" });
 
     try {
         // Verify game exists
@@ -293,15 +285,9 @@ const CHANGE_TYPE_LABELS = {
 };
 
 // ─── POST /api/tickets/change-requests — Submit a CCR ─────────────────────
-router.post("/change-requests", requireAuth, async (req, res) => {
+router.post("/change-requests", requireAuth, createTicketLimiter, ccrValidation, async (req, res) => {
     const { title, description, change_type, security_impact, game_id, priority } = req.body;
     const userId = req.user.id;
-
-    if (!title?.trim())           return res.status(400).json({ error: "Title is required" });
-    if (!description?.trim())     return res.status(400).json({ error: "Description is required" });
-    if (!change_type || !VALID_CHANGE_TYPES.includes(change_type))
-                                  return res.status(400).json({ error: "Valid change_type is required" });
-    if (!security_impact?.trim()) return res.status(400).json({ error: "Security impact assessment is required" });
 
     try {
         const result = await pool.query(

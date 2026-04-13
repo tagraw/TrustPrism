@@ -3,8 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-import { loginLimiter, signupLimiter, passwordResetLimiter } from "../middleware/rateLimit.js";
-import { loginValidation, signupValidation } from "../middleware/validation.js";
+import { loginLimiter, signupLimiter, passwordResetLimiter, settingsUpdateLimiter } from "../middleware/rateLimit.js";
+import { loginValidation, signupValidation, profileUpdateValidation, emailAddValidation, passwordUpdateValidation } from "../middleware/validation.js";
 import crypto from "crypto";
 import { sendVerificationEmail, sendMfaEmail } from "../util/email.js";
 import { sendPasswordResetEmail } from "../util/email.js";
@@ -503,7 +503,7 @@ router.get("/profile-stats", requireAuth, async (req, res) => {
 });
 
 // Add a secondary email
-router.post("/settings/emails", requireAuth, async (req, res) => {
+router.post("/settings/emails", requireAuth, settingsUpdateLimiter, emailAddValidation, async (req, res) => {
   const { email } = req.body;
   const userId = req.user.id;
   const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -535,7 +535,7 @@ router.get("/settings/emails", requireAuth, async (req, res) => {
 // backend/routes/auth.js
 
 // Update basic profile info + extended fields
-router.put("/settings/profile", requireAuth, async (req, res) => {
+router.put("/settings/profile", requireAuth, settingsUpdateLimiter, profileUpdateValidation, async (req, res) => {
   const {
     first_name,
     last_name,
@@ -592,7 +592,7 @@ router.get("/settings/profile", requireAuth, async (req, res) => {
 });
 
 // Update password from settings
-router.put("/settings/password", requireAuth, async (req, res) => {
+router.put("/settings/password", requireAuth, settingsUpdateLimiter, passwordUpdateValidation, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
     const userRes = await pool.query("SELECT password_hash FROM users WHERE id = $1", [req.user.id]);

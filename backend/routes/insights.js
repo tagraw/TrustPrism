@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { secureDelete, generateSecureCSVBuffer, clearBuffer, saveToSecureTmp } from "../util/storage.js";
 
 const router = express.Router();
 
@@ -116,16 +117,21 @@ router.get("/:gameId/export", requireAuth, async (req, res) => {
         }));
 
         if (format === "csv") {
-            // JSON to CSV
             const fields = ["created_at", "event_type", "input_tokens", "output_tokens", "ai_model", "participant_id", "prompt", "response"];
-            const csv = [
-                fields.join(","),
-                ...anonymized.map(row => fields.map(f => row[f] || "").join(","))
-            ].join("\n");
+            const csvRows = anonymized.map(row => fields.map(f => row[f] || ""));
+            const filename = `game_${gameId}_logs.csv`;
 
-            res.header("Content-Type", "text/csv");
-            res.attachment(`game_${gameId}_logs.csv`);
-            return res.send(csv);
+            const buffer = generateSecureCSVBuffer(fields, csvRows);
+            const tempPath = await saveToSecureTmp(filename, buffer);
+            clearBuffer(buffer);
+
+            res.download(tempPath, filename, async (err) => {
+                if (err) {
+                    console.error("Export download error:", err);
+                }
+                await secureDelete(tempPath);
+            });
+            return;
         }
 
         res.json(anonymized);

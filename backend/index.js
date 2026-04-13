@@ -87,7 +87,15 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Security Middlewares
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "frame-ancestors": ["'self'", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(hpp());
 
 // CSRF Protection (Requires X-TrustPrism-CSRF or X-Requested-With header on all POST/PUT/DELETE)
